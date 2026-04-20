@@ -1,0 +1,155 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: goldenPath.spec.ts >> Golden Path: Draft, Audit, Graft, Commit
+- Location: e2e/goldenPath.spec.ts:3:1
+
+# Error details
+
+```
+Error: locator.click: Error: strict mode violation: getByRole('button', { name: /Commit/i }) resolved to 2 elements:
+    1) <button class="group relative flex items-center gap-4 px-10 py-4 bg-primary/10 border border-primary/20 text-primary rounded-full font-black uppercase tracking-[0.3em] text-xs hover:bg-primary/20 transition-all hover:border-primary/30">…</button> aka getByRole('button', { name: 'Commit Polished' })
+    2) <button class="group relative flex items-center gap-4 px-10 py-4 bg-transparent border border-white/10 text-on-surface rounded-full font-black uppercase tracking-[0.3em] text-xs hover:bg-white/5 transition-all hover:border-white/20">…</button> aka getByRole('button', { name: 'Commit Original' })
+
+Call log:
+  - waiting for getByRole('button', { name: /Commit/i })
+
+```
+
+# Page snapshot
+
+```yaml
+- main [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - generic [ref=e10]: E
+          - generic [ref=e11]: Echo Studio
+        - navigation [ref=e13]:
+          - button "Workspace" [ref=e14]:
+            - img [ref=e15]
+            - generic [ref=e18]: Workspace
+          - button "Construct" [ref=e19]:
+            - img [ref=e20]
+            - generic [ref=e22]: Construct
+          - button "Axioms" [ref=e23]:
+            - img [ref=e24]
+            - generic [ref=e28]: Axioms
+          - button "Voice DNA" [ref=e29]:
+            - img [ref=e30]
+            - generic [ref=e33]: Voice DNA
+          - button "Persona" [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e38]: Persona
+      - generic [ref=e39]:
+        - button "Settings" [ref=e40]:
+          - img [ref=e41]
+        - button "Home" [ref=e44]:
+          - img [ref=e45]
+    - generic [ref=e48]:
+      - generic [ref=e49]:
+        - generic [ref=e50]: Project
+        - generic [ref=e51]: Untitled Project
+      - button "Chapter Untitled" [ref=e53]:
+        - generic [ref=e54]: Chapter
+        - generic [ref=e55]: Untitled
+      - button "Scenes 1 (1 unassigned)" [ref=e57]:
+        - generic [ref=e58]: Scenes
+        - generic [ref=e59]:
+          - text: "1"
+          - generic [ref=e60]: (1 unassigned)
+      - generic [ref=e62]:
+        - generic [ref=e63]: Metrics
+        - generic [ref=e64]: 0 words
+      - generic [ref=e66]:
+        - generic [ref=e67]: Goal Tracker
+        - generic [ref=e68]: 0% of 2000 words
+    - main [ref=e71]:
+      - generic [ref=e73]:
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - generic [ref=e77]:
+                - heading "Master Manuscript" [level=3] [ref=e78]
+                - generic [ref=e79]: Grafting Mode
+              - paragraph [ref=e80]: Untitled Chapter
+            - generic [ref=e83]:
+              - generic [ref=e84]:
+                - heading "AI Refinement" [level=3] [ref=e85]
+                - generic [ref=e86]:
+                  - img [ref=e87]
+                  - generic:
+                    - paragraph: Echo Strategy
+                    - paragraph: "\"No critique provided.\""
+              - paragraph [ref=e89]: Donor Material
+          - generic [ref=e91]:
+            - button "Snapshots" [ref=e92]:
+              - img [ref=e93]
+              - generic [ref=e97]: Snapshots
+            - button "The Pen" [ref=e98]:
+              - img [ref=e99]
+              - generic [ref=e104]: The Pen
+        - generic [ref=e109]:
+          - button "Commit Polished" [ref=e110]:
+            - img [ref=e111]
+            - generic [ref=e114]: Commit Polished
+          - button "Commit Original" [ref=e115]:
+            - img [ref=e116]
+            - generic [ref=e119]: Commit Original
+    - generic [ref=e120]:
+      - generic [ref=e125]: Mirror Active
+      - generic [ref=e126]:
+        - button "Draft" [ref=e128]
+        - button "Context" [ref=e131]
+        - button "Audit" [ref=e134]
+        - button "Audit Log" [ref=e137]
+        - button "Workbench" [ref=e140]
+        - button "Ledger" [ref=e143]
+      - button "Zen" [ref=e145]:
+        - img [ref=e146]
+        - generic [ref=e151]: Zen
+```
+
+# Test source
+
+```ts
+  1  | import { test, expect } from '@playwright/test';
+  2  | 
+  3  | test('Golden Path: Draft, Audit, Graft, Commit', async ({ page }) => {
+  4  |   await page.goto('/');
+  5  |   
+  6  |   // 1. Enter Workspace
+  7  |   await page.getByRole('button', { name: /Workspace/i }).click();
+  8  |   await expect(page).toHaveURL(/.*\/workspace/);
+  9  | 
+  10 |   // 2. Draft content
+  11 |   const editor = page.locator('.ProseMirror');
+  12 |   await editor.fill('This is a test draft for the golden path.');
+  13 |   
+  14 |   // 3. Navigate to Refine/Audit (simulated)
+  15 |   await page.getByRole('button', { name: 'Audit', exact: true }).click();
+  16 |   
+  17 |   // 4. Trigger refinement
+  18 |   await page.getByRole('button', { name: 'Audit', exact: true }).click();
+  19 |   
+  20 |   // 5. Audit (wait for report)
+  21 |   await page.getByRole('button', { name: 'Audit Log', exact: true }).click();
+  22 |   await expect(page.locator('[data-testid="report-panel"]')).toBeVisible({ timeout: 10000 });
+  23 |   
+  24 |   // 6. Graft (Open for Surgery)
+  25 |   await page.getByRole('button', { name: /Open for Surgery/i }).click();
+  26 |   await expect(page.locator('[data-testid="workbench-view"]')).toBeVisible();
+  27 |   
+  28 |   // 7. Commit
+> 29 |   await page.getByRole('button', { name: /Commit/i }).click();
+     |                                                       ^ Error: locator.click: Error: strict mode violation: getByRole('button', { name: /Commit/i }) resolved to 2 elements:
+  30 |   await expect(page.getByText(/committed/i)).toBeVisible();
+  31 | });
+  32 | 
+```
