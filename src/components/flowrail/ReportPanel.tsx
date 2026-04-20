@@ -21,8 +21,11 @@ import {
     Brain
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { History } from 'lucide-react';
 import { RefinedVersion, LoreCorrection } from '../../types';
 import { SimpleSideBySideDiff } from '../editor/SimpleSideBySideDiff';
+import { LedgerEngine } from '../../engines/logic/LedgerEngine';
+import { ReportLedger } from './ReportLedger';
 import { ReportMetrics } from './ReportMetrics';
 import { ReportAnalysis } from './ReportAnalysis';
 import { ReportAudit } from './ReportAudit';
@@ -67,6 +70,7 @@ const ReportPanelComponent: React.FC<ReportPanelProps> = ({
     const [isArchitectOpen, setIsArchitectOpen] = useState(false);
     const [activeSection, setActiveSection] = useState('verdict');
     const [reportViewMode, setReportViewMode] = useState<'friendly' | 'technical'>('friendly');
+    const [ledger, setLedger] = useState<{ refinementLogs: RefinedVersion[], surgicalHistory: any[] } | null>(null);
 
     const { setActiveTab } = useEditorUIStore();
 
@@ -109,7 +113,7 @@ const ReportPanelComponent: React.FC<ReportPanelProps> = ({
         audit: (version?.audit && (version.audit.voiceFidelityScore < 7 || version.audit.loreCompliance < 7)) ? 1 : 0
     };
 
-    const allSections = [
+    const allSections = React.useMemo(() => [
         { id: 'verdict', icon: FileText, label: 'Verdict', category: 'friendly' },
         { id: 'diff', icon: Sparkles, label: 'Diff', category: 'friendly' },
         { id: 'self_corrections', icon: CheckCircle2, label: 'Self-Corrections', category: 'friendly', count: version?.selfCorrections?.length || 0, color: 'bg-accent-emerald' },
@@ -122,16 +126,33 @@ const ReportPanelComponent: React.FC<ReportPanelProps> = ({
         { id: 'audit', icon: Shield, label: 'Audit', category: 'technical', count: issueCounts.audit, color: 'bg-error' },
         { id: 'restraint', icon: Anchor, label: 'Restraint', category: 'technical', hide: version?.isSurgical },
         { id: 'context', icon: Layers, label: 'Context', category: 'technical', hide: version?.isSurgical },
-    ];
+        { id: 'ledger', icon: History, label: 'Ledger', category: 'technical' },
+    ], [version, issueCounts.voice, issueCounts.corrections, issueCounts.fraying, issueCounts.audit]);
 
-    const sections = allSections.filter(item => !item.hide && item.category === reportViewMode);
+    const sections = React.useMemo(() => 
+        allSections.filter(item => !item.hide && item.category === reportViewMode),
+    [allSections, reportViewMode]);
 
+    // Handle section persistence and default selection
     React.useEffect(() => {
         if (!version) return;
-        if (!sections.find(s => s.id === activeSection)) {
-            setActiveSection(sections[0]?.id || 'verdict');
+        const currentSectionValid = sections.find(s => s.id === activeSection);
+        if (!currentSectionValid) {
+            const defaultId = sections[0]?.id || 'verdict';
+            setActiveSection(defaultId);
         }
-    }, [reportViewMode, sections, activeSection, version]);
+    }, [sections, activeSection, version]);
+
+    // Handle ledger synchronization
+    React.useEffect(() => {
+        if (!version) return;
+        
+        if (version.sceneId) {
+            LedgerEngine.getSceneHistory(version.sceneId).then(setLedger);
+        } else {
+            setLedger({ refinementLogs: [], surgicalHistory: [] });
+        }
+    }, [version?.sceneId, version?.id, version]);
 
     if (!version) {
         return (
@@ -449,6 +470,12 @@ const ReportPanelComponent: React.FC<ReportPanelProps> = ({
                             {activeSection === 'context' && version.activeContext && (
                                 <div id="context">
                                     <ReportContext activeContext={version.activeContext} />
+                                </div>
+                            )}
+
+                            {activeSection === 'ledger' && (
+                                <div id="ledger">
+                                    <ReportLedger ledger={ledger} setActiveReviewVersion={setActiveReviewVersion} />
                                 </div>
                             )}
 

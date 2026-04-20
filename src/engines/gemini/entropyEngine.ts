@@ -24,13 +24,13 @@ export const entropyEngine = {
     const sigma = Math.sqrt(variance);
     
     // 3. Sentence Polarity: The "Jagged Heartbeat"
-    // Entropy Pivot: If a sentence > 25 words, the next MUST be < 5 words for maximum grit.
+    // Entropy Pivot: If a sentence > 20 words, the next MUST be < 5 words for maximum grit.
     let polarityViolations = 0;
     let potentialMatches = 0;
     for (let i = 0; i < lengths.length - 1; i++) {
-        if (lengths[i] > 25) {
+        if (lengths[i] > 20) {
             potentialMatches++;
-            if (lengths[i + 1] >= 10) { // Violation if next sentence isn't punchy enough
+            if (lengths[i + 1] >= 5) { // Violation if next sentence isn't punchy enough
                 polarityViolations++;
             }
         }
@@ -65,7 +65,7 @@ export const entropyEngine = {
 [ENTROPY_MANDATES]:
 1. THE SURPRISE AUDIT: Proactively identify words with high probability in AI models but low sensory resonance. Veto them.
 2. RHYTHMIC CHAOS (Aggressive): If you find a block where sentence lengths are too similar, trigger a "Surgical Veto". 
-3. SENTENCE POLARITY: For every sentence longer than 25 words, you MUST ensure the following sentence is a "shrapnel sentence" (less than 5 words).
+3. SENTENCE POLARITY: For every sentence longer than 20 words, you MUST ensure the following sentence is a "shrapnel sentence" (less than 5 words).
 4. CHARACTER-SPECIFIC ENTROPY: If the current voice has a distinct linguistic fingerprint, enhance its non-standard grammatical quirks.
 </Entropy_Heuristics_Laboratory>
     `;

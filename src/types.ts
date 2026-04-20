@@ -193,7 +193,7 @@ export interface ArchivePanelProps {
 }
 
 export interface GenerationConfig {
-    model: 'gemini-3.1-flash-lite-preview' | 'gemini-3.1-pro-preview' | 'gemini-3-flash-preview';
+    model: 'gemini-3.1-flash-lite-preview' | 'gemini-3.1-pro-preview' | 'gemini-3-flash-preview' | 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-2.5-pro';
     temperature?: number;
     thinkingConfig?: {
         thinkingLevel: 'minimal' | 'low' | 'default' | 'high';
@@ -750,7 +750,7 @@ export interface UserPreset {
   description?: string;
   focusAreas: FocusArea[];
   depth: FeedbackDepth;
-  model: 'gemini-3-flash-preview' | 'gemini-3.1-pro-preview';
+  model: 'gemini-3-flash-preview' | 'gemini-3.1-pro-preview' | 'gemini-3.1-flash-lite-preview' | 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.5-flash-lite';
   customFocus?: string;
   lastModified: string;
 }

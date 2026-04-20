@@ -10,6 +10,8 @@ import { AuditOutputSchema } from "../../schemas/refinementSchemas";
 import { INTENSITY_CONFIG } from "../../constants/polishDepth";
 import { entropyEngine } from "./entropyEngine";
 import { injectGritIntoAudit } from "./gritEngine";
+import { SovereignEngine } from "./SovereignEngine";
+import { NegativeVetoUtility } from "./NegativeVetoUtility";
 
 /**
  * AuditEngine: Conducts adversarial diagnostics on refined prose.
@@ -73,10 +75,23 @@ ${activeVoices.map((v: any) => `[${v.name.toUpperCase()}]: Pattern: ${v.soulPatt
 
         // Entropy heuristics pass
         const stats = entropyEngine.calculateHeuristics(refinedText);
-        const isEntropyFailed = stats.ttr < 0.6 || stats.sigma < 10 || stats.polarityScore < 0.8;
+        const isPro = SovereignEngine.isProModel(options.generationConfig?.model);
+        
+        // Deterministic Veto Pass
+        const vetoResults = NegativeVetoUtility.check(refinedText);
+        if (vetoResults.failed) {
+            parsedAudit.conflicts.push(...vetoResults.violations.map(v => ({
+                sentence: "Negative Mandate Violation",
+                reason: v
+            })));
+        }
+
+        // Stricter thresholds for Pro Models
+        const burstinessThreshold = isPro ? 10.0 : 4.5;
+        const isEntropyFailed = stats.ttr < 0.6 || stats.sigma < burstinessThreshold || stats.polarityScore < 0.8;
 
         // Failure detection logic
-        const isMandateViolated = parsedAudit.conflicts && parsedAudit.conflicts.length > 0;
+        const isMandateViolated = (parsedAudit.conflicts && parsedAudit.conflicts.length > 0) || vetoResults.failed;
         const isLoreFailed = parsedAudit.audit && parsedAudit.audit.loreCompliance < dynamicLoreThreshold;
         const isVoiceFailed = parsedAudit.audit && (parsedAudit.audit.voiceFidelityScore < 7.0 || parsedAudit.audit.voiceAdherence < 7.0);
         const isAxiomViolated = parsedAudit.axiom_collisions && parsedAudit.axiom_collisions.length > 0;
@@ -89,7 +104,7 @@ ${activeVoices.map((v: any) => `[${v.name.toUpperCase()}]: Pattern: ${v.soulPatt
             isAxiomViolated || 
             isSludgeDetected || 
             isGritFailed || 
-            (isEntropyFailed && options.feedbackDepth === 'in-depth')
+            (isEntropyFailed && (options.feedbackDepth === 'in-depth' || isPro))
         );
 
         return { 

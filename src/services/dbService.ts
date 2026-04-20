@@ -394,6 +394,7 @@ export const putStoredSearchIndex = async (projectId: string, serializedIndex: s
 
 // --- SNAPSHOTS ---
 export const getSnapshots = async (sceneId: string): Promise<SurgicalSnapshot[]> => {
+  if (!sceneId) return [];
   return db.snapshots.where('sceneId').equals(sceneId).sortBy('timestamp');
 };
 

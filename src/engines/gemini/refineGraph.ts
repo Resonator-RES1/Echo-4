@@ -5,9 +5,8 @@ import { ContextEngine } from "./contextEngine";
 import { AuditEngine } from "./auditEngine";
 import { HealingEngine } from "./healingEngine";
 import { TriageEngine } from "./triageEngine";
-import { entropyEngine } from "./entropyEngine";
-import { injectGritIntoAudit } from "./gritEngine";
-import { getMemoryAxioms, getActiveTimelineEvents, getCharacterArcs } from "../../services/dbService";
+import { LoreEngine } from "../logic/LoreEngine";
+import { TimelineEngine } from "../logic/TimelineEngine";
 import { resolveAllProfiles } from "../../utils/profileResolver";
 import { calculateAbsoluteDay } from "../../utils/calendar";
 import { zodToGeminiSchema } from "../../utils/zodToGemini";
@@ -17,6 +16,7 @@ import { INTENSITY_CONFIG } from "../../constants/polishDepth";
 import { buildSystemPrompt } from "./prompts";
 import { DEPTH_CONFIG } from "../../constants/refinement";
 import { DexieSaver } from "./dexieSaver";
+import { SovereignEngine } from "./SovereignEngine";
 
 // 1. Define the State
 export const RefinementState = Annotation.Root({
@@ -52,6 +52,9 @@ export const RefinementState = Annotation.Root({
     healingPasses: Annotation<number>({
         reducer: (a, b) => a + b
     }),
+
+    // Pro-Specific state
+    mechanicalMandates: Annotation<string>(),
 });
 
 // Helper for Safe JSON Parsing
@@ -74,21 +77,13 @@ async function initializeContextNode(state: typeof RefinementState.State) {
         ? calculateAbsoluteDay(options.storyDate, options.calendarConfig)
         : (options.storyDay ?? 0);
 
-    const activeLoreForSemantic = resolveAllProfiles((options.loreEntries||[]).filter((e: any) => e.isActive), currentAbsoluteDay, options.calendarConfig);
-    const activeVoicesForSemantic = resolveAllProfiles((options.voiceProfiles||[]).filter((v: any) => v.isActive), currentAbsoluteDay, options.calendarConfig);
+    const { lore, voices, authorVoices, memoryAxioms } = await LoreEngine.getActiveContext();
     
-    // Echo Dynamic Memory Integration
-    const memoryAxioms = await getMemoryAxioms();
+    const activeLoreForSemantic = resolveAllProfiles(lore, currentAbsoluteDay, options.calendarConfig);
+    const activeVoicesForSemantic = resolveAllProfiles(voices, currentAbsoluteDay, options.calendarConfig);
 
     // Timeline and Arcs integration
-    const timelineEvents = await getActiveTimelineEvents();
-    const activeTimelineEvents = timelineEvents.filter(e => e.absoluteDay <= currentAbsoluteDay || e.importance === 'catastrophic');
-    
-    const characterArcs = await getCharacterArcs();
-    const activeCharacterArcs = characterArcs.filter(arc => 
-        activeLoreForSemantic.some(l => l.id === arc.voiceId) || 
-        activeVoicesForSemantic.some(v => v.id === arc.voiceId)
-    );
+    const { activeEvents: activeTimelineEvents, characterArcs: activeCharacterArcs } = await TimelineEngine.getTimelineContext(currentAbsoluteDay);
 
     // --- STAGE 0: LOCAL TRIAGE (ZERO-TOKEN) ---
     // Zero-token detection to minimize noisy input to AI stages
@@ -155,7 +150,10 @@ async function initializeContextNode(state: typeof RefinementState.State) {
         thinkingConfig: { thinkingLevel: options.reportGenerationConfig?.thinkingConfig?.thinkingLevel || 'high' }
     };
 
-    const systemInstruction = buildSystemPrompt({
+    const isPro = SovereignEngine.isProModel(generationConfig.model);
+    
+    // Inject Hardened Constraints into System Instruction for Pro models
+    let systemInstruction = buildSystemPrompt({
         authorVoices: activeAuthorVoices,
         voiceProfiles: activeVoices,
         voiceSuites: options.voiceSuites || [],
@@ -188,6 +186,11 @@ async function initializeContextNode(state: typeof RefinementState.State) {
         mandate
     });
 
+    if (isPro) {
+        systemInstruction += SovereignEngine.getHardenedConstraints();
+        systemInstruction += SovereignEngine.getShieldMandate();
+    }
+
     let dynamicLoreThreshold = options.loreComplianceThreshold ?? 7.0;
     if (activeLore.some((e: any) => e.narrativeWeight === 'pivotal')) dynamicLoreThreshold = Math.max(dynamicLoreThreshold, 9.0);
     else if (activeLore.some((e: any) => e.narrativeWeight === 'active')) dynamicLoreThreshold = Math.max(dynamicLoreThreshold, 8.0);
@@ -201,8 +204,34 @@ async function initializeContextNode(state: typeof RefinementState.State) {
     };
 }
 
+/**
+ * sanitizerNode: Pre-processes internal critique to strip meta-language
+ * for Pro models.
+ */
+async function sanitizerNode(state: typeof RefinementState.State) {
+    const { options, blueprint, mandate } = state;
+    const isPro = SovereignEngine.isProModel(state.generationConfig.model);
+
+    if (!isPro) return {};
+
+    // For Pro models, we want to sanitize the blueprint and mandate descriptions
+    // to prevent meta-language leakage.
+    const sanitizedBlueprint: NarrativeBlueprint = {
+        ...blueprint,
+        chapterArc: SovereignEngine.sanitizeCritique(blueprint.chapterArc),
+        tonalSignature: SovereignEngine.sanitizeCritique(blueprint.tonalSignature),
+        priorityFocus: SovereignEngine.sanitizeCritique(blueprint.priorityFocus)
+    };
+
+    return { 
+        blueprint: sanitizedBlueprint 
+    };
+}
+
 async function refinementNode(state: typeof RefinementState.State) {
     const { draft, options, systemInstruction, generationConfig } = state;
+    const isPro = SovereignEngine.isProModel(generationConfig.model);
+
     let preamble = '';
     if (options.localWarnings && options.localWarnings.length > 0) {
         preamble += `\n*** PRE-AUDIT WARNINGS ACTIVE ***\nThe local scanner has identified potential continuity issues... You MUST address them.\n`;
@@ -217,6 +246,10 @@ async function refinementNode(state: typeof RefinementState.State) {
     } else {
         preamble += `\n*** FULL CHAPTER REFINEMENT MODE ***\nPRESERVE all titles, headers, etc.\n`;
         userPrompt = `${preamble}<DRAFT>\n${draft}\n</DRAFT>\n<TASK>\n${masterIntent}Refine.\n</TASK>`;
+    }
+
+    if (isPro) {
+        userPrompt += `\n\nREMINDER: Follow the THE SOVEREIGN RIGOR hard constraints. Focus on Physics, not Vibe.`;
     }
 
     const { parsed: parsedRefinement, combinedThinking } = await callWithInstructor({
@@ -270,20 +303,46 @@ async function auditNode(state: typeof RefinementState.State) {
 }
 
 async function healingNode(state: typeof RefinementState.State) {
-    const { draft, refinedText, parsedAudit, options, systemInstruction, generationConfig } = state;
+    const { draft, refinedText, parsedAudit, options, systemInstruction, generationConfig, entropyMetrics, healingPasses = 0 } = state;
     const profile = INTENSITY_CONFIG[options.feedbackDepth || 'balanced'];
-    
+    const isPro = SovereignEngine.isProModel(generationConfig.model);
+
     // Engine-driven directive generation
     const healingDirectives = HealingEngine.generateDirectives(state);
     
     let gritDirectives = '';
-    const gritConflicts = parsedAudit.conflicts?.filter((c: any) => c.sentence.includes('Burstiness') || c.sentence.includes('Ratio') || c.sentence === 'Rhythmic Mandate' || c.sentence === 'Lexical Mandate');
+    const gritConflicts = parsedAudit.conflicts?.filter((c: any) => c.sentence.includes('Burstiness') || c.sentence.includes('Ratio') || c.sentence === 'Rhythmic Mandate' || c.sentence === 'Lexical Mandate' || c.sentence === 'Negative Mandate Violation');
     
     if (gritConflicts && gritConflicts.length > 0) {
         gritDirectives = `\n<GRIT_MATH_MANDATES>\nYOUR PROSE PHYSICALLY FAILED THE PHYSICS ENGINE.\nYou MUST apply these mathematical fixes to the failed segments:\n${gritConflicts.map((c: any) => `- [PHYSICS]: ${c.sentence}\n  [MANDATE]: ${c.reason}`).join('\n')}\n</GRIT_MATH_MANDATES>\n`;
     }
 
-    const healingPrompt = `<ORIGINAL_DRAFT>\n${draft}\n</ORIGINAL_DRAFT>\n<FAILED_REFINEMENT>\n${refinedText}\n</FAILED_REFINEMENT>\n<AUDIT_REPORT>\n${parsedAudit.analysis}\n</AUDIT_REPORT>${healingDirectives}${gritDirectives}\n<TASK>Consult mandate and axioms, rewrite affected segments EXACTLY as instructed. The directives are higher priority than stylistic 'flow' - you MUST break the flow to fix the patterns.</TASK>`;
+    let healingPrompt = "";
+    
+    // Engine-driven booster logic
+    const isPersistentFailure = healingPasses > 0 && isPro;
+    const booster = isPersistentFailure ? "\n*** HIGH-ENTROPY BOOSTER ACTIVE ***\nYour previous repair pass failed the physics check. You are being too polite. You MUST use more jagged sentence structures. BREAK the predictable rhythm. Use fragments. Use harsh concrete nouns.\n" : "";
+
+    // --- PRO HARDENING: BLOCK-MODE HEALING ---
+    if (isPro && entropyMetrics?.entropy_map?.length > 0) {
+        const failBlocks = entropyMetrics.entropy_map.filter((seg: any) => seg.entropy_score < 0.5 && seg.violation);
+        
+        if (failBlocks.length > 0) {
+            const blockHealingInstructions = failBlocks.map((block: any, idx: number) => `
+### BLOCK FAIL #${idx + 1}:
+[FRAGMENT]: "${block.text}"
+[VIOLATION]: ${block.violation}
+[MANDATE]: ${block.fix_suggestion || "Apply Winston Polarity and Noun-Anchor lock."}
+`).join('\n');
+
+            healingPrompt = `${booster}<REFINED_TEXT_CONTEXT>\n${refinedText}\n</REFINED_TEXT_CONTEXT>\n<BLOCK_FAILURES>\n${blockHealingInstructions}\n</BLOCK_FAILURES>\n<TASK>You are a Surgical Grit Engineer. Review the <BLOCK_FAILURES> within the context of the <REFINED_TEXT_CONTEXT>. REWRITE ONLY the failed fragments to satisfy the mandates. PRESERVE neighboring context exactly. Your output must be the full refined text with the repaired blocks integrated.</TASK>\n${SovereignEngine.getHardenedConstraints()}`;
+        }
+    }
+
+    // Fallback to standard healing if not Pro or no blocks detected
+    if (!healingPrompt) {
+        healingPrompt = `${booster}<ORIGINAL_DRAFT>\n${draft}\n</ORIGINAL_DRAFT>\n<FAILED_REFINEMENT>\n${refinedText}\n</FAILED_REFINEMENT>\n<AUDIT_REPORT>\n${parsedAudit.analysis}\n</AUDIT_REPORT>${healingDirectives}${gritDirectives}\n<TASK>Consult mandate and axioms, rewrite affected segments EXACTLY as instructed. The directives are higher priority than stylistic 'flow' - you MUST break the flow to fix the patterns.</TASK>`;
+    }
 
     const { parsed: parsedHealing, combinedThinking } = await callWithInstructor({
         model: generationConfig.model,
@@ -314,12 +373,14 @@ function shouldHeal(state: typeof RefinementState.State) {
 // 2. Compile the Graph
 const workflow = new StateGraph(RefinementState)
     .addNode("initialize", initializeContextNode)
+    .addNode("sanitize", sanitizerNode)
     .addNode("refine", refinementNode)
     .addNode("audit", auditNode)
     .addNode("heal", healingNode)
     
     .addEdge(START, "initialize")
-    .addEdge("initialize", "refine")
+    .addEdge("initialize", "sanitize")
+    .addEdge("sanitize", "refine")
     .addEdge("refine", "audit")
     .addConditionalEdges("audit", shouldHeal, {
         heal: "heal",

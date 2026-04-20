@@ -23,7 +23,7 @@ export const TriageEngine = {
         voiceProfiles.forEach(voice => {
             const terms = [voice.name, ...(voice.aliases || [])];
             const found = terms.some(term => {
-                const regex = new RegExp(`\\b${voice.name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, 'gi');
+                const regex = new RegExp(`\\b${term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, 'gi');
                 return regex.test(text);
             });
             if (found) detectedIds.push(voice.id);

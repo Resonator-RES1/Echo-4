@@ -38,6 +38,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, set
 
   const modelOptions = activeFamily === '3.x' ? [
     { 
+      id: 'gemini-3.1-flash-lite-preview', 
+      label: 'Flash Lite', 
+      icon: <Zap className="w-5 h-5 opacity-50" />, 
+      description: 'Ultra-fast, low-cost narrative sweep.' 
+    },
+    { 
       id: 'gemini-3-flash-preview', 
       label: 'Flash', 
       icon: <Zap className="w-5 h-5" />, 
@@ -50,6 +56,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, set
       description: 'Deepest reasoning for complex epics.' 
     },
   ] : [
+    { 
+      id: 'gemini-2.5-flash-lite', 
+      label: 'Flash Lite 2.5', 
+      icon: <Zap className="w-5 h-5 opacity-50" />, 
+      description: 'Optimized efficiency for rapid iterations.' 
+    },
     { 
       id: 'gemini-2.5-flash', 
       label: 'Flash 2.5', 
@@ -65,11 +77,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, set
   ];
 
   const handleFamilyChange = (id: '3.x' | '2.5') => {
-    const isPro = selectedModel.includes('pro');
     if (id === '3.x') {
-      setSelectedModel(isPro ? 'gemini-3.1-pro-preview' : 'gemini-3-flash-preview');
+      if (selectedModel.includes('pro')) setSelectedModel('gemini-3.1-pro-preview');
+      else if (selectedModel.includes('lite')) setSelectedModel('gemini-3.1-flash-lite-preview');
+      else setSelectedModel('gemini-3-flash-preview');
     } else {
-      setSelectedModel(isPro ? 'gemini-2.5-pro' : 'gemini-2.5-flash');
+      if (selectedModel.includes('pro')) setSelectedModel('gemini-2.5-pro');
+      else if (selectedModel.includes('lite')) setSelectedModel('gemini-2.5-flash-lite');
+      else setSelectedModel('gemini-2.5-flash');
     }
   };
 
