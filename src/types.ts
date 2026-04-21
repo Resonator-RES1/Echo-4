@@ -239,6 +239,8 @@ export interface RefineDraftOptions {
   localWarnings?: ContinuityIssue[];
   isSurgical?: boolean;
   scope?: 'scene' | 'chapter';
+  refinementModelOverride?: string;
+  healingModelOverride?: string;
   healingLoopActive?: boolean;
   isReRefinement?: boolean;
   previousInternalCritique?: string;
@@ -307,6 +309,12 @@ export interface RefineDraftResult {
   selfCorrections?: SelfCorrection[];
   collisionAnalysis?: string;
   syncAudit?: string;
+  fidelityScore?: {
+    burstiness: number;
+    noun_ratio: number;
+    sludge_hits: number;
+    verdict: 'PASS' | 'FAIL';
+  };
   blueprint?: NarrativeBlueprint;
   mandate?: MechanicalMandate;
   healingPasses?: number;
@@ -483,6 +491,7 @@ export interface LoreEntry {
   isForeshadowing?: boolean;
   isTimelineEnabled?: boolean;
   isChronologicalAnchor?: boolean;
+  lexicon?: Record<string, string>; // Deterministic replacements e.g. {"computer": "terminal-scrap"}
   isEvolution?: boolean;
   linkedEntityIds?: string[];
   embedding?: number[];
@@ -699,6 +708,12 @@ export interface RefinedVersion {
   selfCorrections?: SelfCorrection[];
   collisionAnalysis?: string;
   syncAudit?: string;
+  fidelityScore?: {
+    burstiness: number;
+    noun_ratio: number;
+    sludge_hits: number;
+    verdict: 'PASS' | 'FAIL';
+  };
   blueprint?: NarrativeBlueprint;
   mandate?: MechanicalMandate;
   narrativeDensity?: 'action' | 'dialogue' | 'exposition';

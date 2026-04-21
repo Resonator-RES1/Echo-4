@@ -28,6 +28,7 @@ import { calculateAbsoluteDay } from '../../utils/calendar';
 import { getResonanceLabel } from '../../lib/utils';
 import { RefinementOutputSchema, AuditOutputSchema, NarrativeAlignmentOutputSchema, PreFlightOutputSchema } from '../../schemas/refinementSchemas';
 import { zodToGeminiSchema } from '../../utils/zodToGemini';
+import { useConfigStore } from '../../stores/useConfigStore';
 
 import { DEPTH_CONFIG } from '../../constants/refinement';
 
@@ -174,9 +175,16 @@ import { refinementGraph } from './refineGraph';
 
 export const refineDraft = async (options: RefineDraftOptions): Promise<RefineDraftResult> => {
 // DELEGATED TO LANGGRAPH
+  const store = useConfigStore.getState();
+  const refinedOptions = {
+      ...options,
+      refinementModelOverride: options.refinementModelOverride || store.refinementModelOverride || undefined,
+      healingModelOverride: options.healingModelOverride || store.healingModelOverride || undefined,
+  };
+  
   const initialState = {
       draft: options.draft,
-      options: options,
+      options: refinedOptions,
       healingPasses: 0
   };
 
@@ -250,6 +258,7 @@ export const refineDraft = async (options: RefineDraftOptions): Promise<RefineDr
         loreFraying: finalState.parsedAudit?.lore_fraying || [],
         voiceAudits: finalState.parsedAudit?.voice_audits || [],
         healingPasses: finalState.healingPasses,
+        fidelityScore: finalState.fidelityScore,
         threadId: thread_id,
         isSurgical: options.isSurgical || false,
         wordCountDelta: {

@@ -40,7 +40,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, set
     { 
       id: 'gemini-3.1-flash-lite-preview', 
       label: 'Flash Lite', 
-      icon: <Zap className="w-5 h-5 opacity-50" />, 
+      icon: <Zap className="w-5 h-5" />, 
       description: 'Ultra-fast, low-cost narrative sweep.' 
     },
     { 
@@ -59,7 +59,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, set
     { 
       id: 'gemini-2.5-flash-lite', 
       label: 'Flash Lite 2.5', 
-      icon: <Zap className="w-5 h-5 opacity-50" />, 
+      icon: <Zap className="w-5 h-5" />, 
       description: 'Optimized efficiency for rapid iterations.' 
     },
     { 

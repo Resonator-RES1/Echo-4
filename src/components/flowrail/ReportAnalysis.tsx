@@ -92,7 +92,7 @@ export const ReportAnalysis: React.FC<{ version: RefinedVersion }> = ({ version 
                     <div className="bg-white/[0.02] p-5 rounded-xl border border-white/10 relative overflow-hidden shadow-inner">
                         <div className="flex gap-5">
                             <div className="w-10 h-10 rounded-lg bg-accent-emerald/10 border border-accent-emerald/20 flex items-center justify-center shrink-0">
-                                <span className="text-sm font-black text-accent-emerald">{version.thematic_resonance.score.toFixed(1)}</span>
+                                <span className="text-sm font-black text-accent-emerald">{version.thematic_resonance.score?.toFixed(1) ?? '0.0'}</span>
                             </div>
                             <div>
                                 <h4 className="text-[9px] font-black uppercase tracking-wider text-accent-emerald/60 mb-2 font-mono">Thematic Resonance Index</h4>
@@ -110,7 +110,7 @@ export const ReportAnalysis: React.FC<{ version: RefinedVersion }> = ({ version 
                     <div className="bg-white/[0.02] p-5 rounded-xl border border-white/10 relative overflow-hidden shadow-inner">
                         <div className="flex gap-5">
                             <div className="w-10 h-10 rounded-lg bg-accent-amber/10 border border-accent-amber/20 flex items-center justify-center shrink-0">
-                                <span className="text-sm font-black text-accent-amber">{version.narrative_entropy.drift_score.toFixed(1)}</span>
+                                <span className="text-sm font-black text-accent-amber">{version.narrative_entropy.drift_score?.toFixed(1) ?? '0.0'}</span>
                             </div>
                             <div>
                                 <div className="flex items-center justify-between gap-4 mb-2">
@@ -140,15 +140,15 @@ export const ReportAnalysis: React.FC<{ version: RefinedVersion }> = ({ version 
                                 <div className="flex gap-4">
                                     <div className="flex flex-col items-center">
                                         <span className="text-[8px] text-on-surface-variant/40 uppercase font-black tracking-tighter">TTR</span>
-                                        <span className={`text-xs font-bold ${version.entropy_metrics.type_token_ratio < 0.6 ? 'text-error' : 'text-on-surface'}`}>{version.entropy_metrics.type_token_ratio.toFixed(2)}</span>
+                                        <span className={`text-xs font-bold ${version.entropy_metrics.type_token_ratio < 0.6 ? 'text-error' : 'text-on-surface'}`}>{version.entropy_metrics.type_token_ratio?.toFixed(2) ?? '0.00'}</span>
                                     </div>
                                     <div className="flex flex-col items-center">
                                         <span className="text-[8px] text-on-surface-variant/40 uppercase font-black tracking-tighter">Sigma</span>
-                                        <span className={`text-xs font-bold ${version.entropy_metrics.sentence_variance < 10 ? 'text-error' : 'text-on-surface'}`}>{version.entropy_metrics.sentence_variance.toFixed(1)}</span>
+                                        <span className={`text-xs font-bold ${version.entropy_metrics.sentence_variance < 10 ? 'text-error' : 'text-on-surface'}`}>{version.entropy_metrics.sentence_variance?.toFixed(1) ?? '0.0'}</span>
                                     </div>
                                     <div className="flex flex-col items-center">
                                         <span className="text-[8px] text-on-surface-variant/40 uppercase font-black tracking-tighter">Grit</span>
-                                        <span className={`text-xs font-bold ${version.entropy_metrics.polarity_score < 0.7 ? 'text-error' : 'text-on-surface'}`}>{(version.entropy_metrics.polarity_score * 100).toFixed(0)}%</span>
+                                        <span className={`text-xs font-bold ${version.entropy_metrics.polarity_score < 0.7 ? 'text-error' : 'text-on-surface'}`}>{(version.entropy_metrics.polarity_score ? (version.entropy_metrics.polarity_score * 100).toFixed(0) : '0')}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -156,9 +156,9 @@ export const ReportAnalysis: React.FC<{ version: RefinedVersion }> = ({ version 
                             <div className="space-y-3">
                                 <h5 className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/20">The Grit Map (Surgical Veto Pass)</h5>
                                 <div className="flex flex-wrap gap-1.5">
-                                    {version.entropy_metrics.entropy_map.map((segment) => (
+                                    {version.entropy_metrics.entropy_map.map((segment, idx) => (
                                         <div 
-                                            key={segment.id}
+                                            key={segment.id ?? idx}
                                             className={`px-2 py-1 rounded text-[10px] font-serif border transition-all cursor-help
                                                 ${segment.entropy_score < 0.5 
                                                     ? 'bg-error/10 border-error/30 text-error shadow-[0_0_10px_rgba(var(--color-error),0.05)]' 
@@ -203,7 +203,7 @@ export const ReportAnalysis: React.FC<{ version: RefinedVersion }> = ({ version 
                 {expressionProfile && expressionProfile.length > 0 && (
                     <div className="space-y-4 mt-6">
                         {expressionProfile.map((profile, idx) => (
-                            <ExpressionCard key={idx} profile={profile} />
+                            <ExpressionCard key={profile.vibe ?? idx} profile={profile} />
                         ))}
                     </div>
                 )}

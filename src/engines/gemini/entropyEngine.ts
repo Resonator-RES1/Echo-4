@@ -1,3 +1,4 @@
+import nlp from 'compromise';
 import { EntropyMetricsSchema } from "../../schemas/refinementSchemas";
 
 /**
@@ -22,15 +23,21 @@ export const entropyEngine = {
     const mean = n > 0 ? lengths.reduce((a, b) => a + b, 0) / n : 0;
     const variance = n > 0 ? lengths.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n : 0;
     const sigma = Math.sqrt(variance);
+
+    // 3. Lexical Entropy: Noun-to-Adjective Density
+    const doc = nlp(text);
+    const nounsCount = doc.nouns().length;
+    const adjectivesCount = doc.adjectives().length;
+    const nounAdjectiveRatio = adjectivesCount > 0 ? nounsCount / adjectivesCount : nounsCount;
     
-    // 3. Sentence Polarity: The "Jagged Heartbeat"
-    // Entropy Pivot: If a sentence > 20 words, the next MUST be < 5 words for maximum grit.
+    // 4. Sentence Polarity: The "Jagged Heartbeat"
+    // Entropy Pivot: If a sentence > 20 words, the next MUST be < 10 words for maximum grit.
     let polarityViolations = 0;
     let potentialMatches = 0;
     for (let i = 0; i < lengths.length - 1; i++) {
         if (lengths[i] > 20) {
             potentialMatches++;
-            if (lengths[i + 1] >= 5) { // Violation if next sentence isn't punchy enough
+            if (lengths[i + 1] >= 10) { // Violation if next sentence isn't punchy enough
                 polarityViolations++;
             }
         }
@@ -42,6 +49,7 @@ export const entropyEngine = {
     return {
       ttr,
       sigma,
+      nounAdjectiveRatio,
       polarityScore,
       sentenceCount: n,
       wordCount: words.length,
@@ -58,15 +66,16 @@ export const entropyEngine = {
     return `
 <Entropy_Heuristics_Laboratory>
 [DETERMINISTIC_PASS_COMPLETE]:
-- Lexical Diversity (TTR): ${stats.ttr.toFixed(2)} (Target: >0.65 for high complexity)
-- Rhythmic Burstiness (Sigma): ${stats.sigma.toFixed(2)} (Target: >12.0 for human chaos)
-- Jagged Heartbeat (Polarity): ${(stats.polarityScore * 100).toFixed(0)}% (Goal: 100% of Long sentences followed by <10 word punch)
+- Lexical Diversity (TTR): ${stats.ttr.toFixed(2)} (Target: >0.65)
+- Rhythmic Burstiness (Sigma): ${stats.sigma.toFixed(2)} (Threshold: < 8.0 is "AI Metronome")
+- Noun-to-Adjective Ratio: ${stats.nounAdjectiveRatio.toFixed(2)}:1 (Target: > 4:1)
+- Jagged Heartbeat (Polarity): ${(stats.polarityScore * 100).toFixed(0)}% (Goal: Long sentence -> Punchy sentence)
 
 [ENTROPY_MANDATES]:
 1. THE SURPRISE AUDIT: Proactively identify words with high probability in AI models but low sensory resonance. Veto them.
-2. RHYTHMIC CHAOS (Aggressive): If you find a block where sentence lengths are too similar, trigger a "Surgical Veto". 
-3. SENTENCE POLARITY: For every sentence longer than 20 words, you MUST ensure the following sentence is a "shrapnel sentence" (less than 5 words).
-4. CHARACTER-SPECIFIC ENTROPY: If the current voice has a distinct linguistic fingerprint, enhance its non-standard grammatical quirks.
+2. RHYTHMIC CHAOS (Aggressive): If Sigma < 8.0, you MUST inject burstiness by breaking long sentences and alternating lengths randomly.
+3. NOUN ANCHORING: If the Noun-to-Adjective ratio is < 4:1, you MUST delete adjectives and replace them with concrete, sensory nouns from the Lore.
+4. SENTENCE POLARITY (Winston Shield): For every sentence > 20 words, the following sentence MUST be < 10 words.
 </Entropy_Heuristics_Laboratory>
     `;
   }

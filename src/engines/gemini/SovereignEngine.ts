@@ -78,5 +78,36 @@ Your singular objective is **Mechanical Precision.** Focus on the grit, the dirt
     isProModel(model?: string): boolean {
         if (!model) return false;
         return model.includes('pro') || model.includes('ultra');
+    },
+
+    /**
+     * Report Translation Node:
+     * Transcodes Audit findings into specific "Model-Persona" formats.
+     */
+    translateAudit(audit: any, targetModel: string): string {
+        const isPro = this.isProModel(targetModel);
+        const analysis = audit.analysis || "Standard Audit";
+        const conflicts = audit.conflicts || [];
+        
+        if (isPro) {
+            // MATH-FIRST (Pro Models): Pure logic, constraints, and physical goals.
+            return `
+[ENGINE_DIRECTIVE]: PHYSICS-ONLY REFINEMENT
+[CONSTRAINTS]:
+- ${analysis}
+- MANDATE: Repair all lore conflicts via direct physical action.
+- ${conflicts.map((c: any) => `[CONFLICT]: ${c.sentence}\n  [FIX]: ${c.reason}`).join('\n')}
+[GOAL]: Strict causality recovery.
+`;
+        } else {
+            // SENSORY-FIRST (Flash Models): Noun-anchors, vibes, and world-building cues.
+            return `
+[FIX_THE_VIBE]: Sensory Recovery required.
+[SENSORY_ANCHORS]: Use concrete textures, sharp smells, and high-entropy nouns.
+[LORE_FIXES]:
+${conflicts.map((c: any) => `- Ensure ${c.sentence} aligns with the world's weight: ${c.reason}`).join('\n')}
+[VIBE_CHECK]: ${analysis}
+`;
+        }
     }
 };

@@ -1,8 +1,15 @@
 import { FocusArea, GuideSection } from "./types";
 
+export const AVAILABLE_MODELS = [
+  'gemini-3.1-flash-lite-preview',
+  'gemini-3.1-flash-preview',
+  'gemini-3.1-pro-preview',
+  'gemini-3-flash-preview',
+  'gemini-2.5-pro'
+];
+
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
-    id: 'sanctuary',
     title: 'The Sanctuary',
     icon: 'Info',
     hideFromQuickGuide: false,

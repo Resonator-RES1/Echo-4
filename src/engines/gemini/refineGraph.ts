@@ -46,16 +46,27 @@ export const RefinementState = Annotation.Root({
         reducer: (a, b) => (a ? `${a}\n\n---\n\n${b}` : b)
     }),
     
+    chapterNumber: Annotation<number>(),
+    decayScalar: Annotation<number>(), // Calculated based on chapter number
+
     parsedAudit: Annotation<any>(),
     entropyMetrics: Annotation<any>(),
+    fidelityScore: Annotation<{
+        burstiness: number;
+        noun_ratio: number;
+        sludge_hits: number;
+        verdict: 'PASS' | 'FAIL';
+    }>(),
     needsHealing: Annotation<boolean>(),
     healingPasses: Annotation<number>({
-        reducer: (a, b) => a + b
+        reducer: (a, b) => (a ?? 0) + b
     }),
 
     // Pro-Specific state
     mechanicalMandates: Annotation<string>(),
 });
+
+import { MirrorEditor } from "./MirrorEditor";
 
 // Helper for Safe JSON Parsing
 const safeJsonParse = (jsonString: string) => {
@@ -91,14 +102,41 @@ async function initializeContextNode(state: typeof RefinementState.State) {
     const discoverableLore = activeLoreForSemantic.filter(l => l.isPinned || locallyDetectedIds.includes(l.id));
     const discoverableVoices = activeVoicesForSemantic.filter(v => v.isPinned || locallyDetectedIds.includes(v.id));
 
+    // --- STAGE 0: DETERMINISTIC KEYWORD SCAN (SOVEREIGN SPEED) ---
+    const locallyDetectedLoreIds = options.loreEntries?.filter(l => {
+        const terms = [l.title, ...(l.aliases || [])].filter(Boolean);
+        return terms.some(term => {
+            const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+            return regex.test(draft);
+        });
+    }).map(l => l.id) || [];
+
+    const locallyDetectedVoiceIds = options.voiceProfiles?.filter(v => {
+        const terms = [v.name, ...(v.aliases || [])].filter(Boolean);
+        return terms.some(term => {
+            const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+            return regex.test(draft);
+        });
+    }).map(v => v.id) || [];
+
     // --- STAGE 1: AI SEMANTIC AUDIT (FLASH LITE) ---
     // AI confirms the local detection and classifies narrative density
     const preFlight = await ContextEngine.analyzeContext(draft, discoverableLore, discoverableVoices, options.scope || 'scene', memoryAxioms);
     
+    // Merge AI findings with deterministic hits (Deterministic > Semantic)
+    const activeLoreIds = Array.from(new Set([...preFlight.semantic.loreIds, ...locallyDetectedLoreIds]));
+    const activeVoiceIds = Array.from(new Set([...preFlight.semantic.voiceIds, ...locallyDetectedVoiceIds]));
+
+    // Update preFlight for downstream nodes
+    preFlight.semantic.loreIds = activeLoreIds;
+    preFlight.semantic.voiceIds = activeVoiceIds;
+
     // --- STAGE 2: STRATEGIC ALIGNMENT (FLASH LITE) ---
     // Narrow context for alignment pass to ensure strategy is targeted
-    const narrowedLoreForAlignment = activeLoreForSemantic.filter(l => preFlight.semantic.loreIds.includes(l.id) || l.isPinned);
-    const narrowedVoicesForAlignment = activeVoicesForSemantic.filter(v => preFlight.semantic.voiceIds.includes(v.id) || v.isPinned);
+    const narrowedLoreForAlignment = activeLoreForSemantic.filter(l => activeLoreIds.includes(l.id) || l.isPinned);
+    const narrowedVoicesForAlignment = activeVoicesForSemantic.filter(v => activeVoiceIds.includes(v.id) || v.isPinned);
 
     const { blueprint, mandate } = await AlignmentEngine.performAlignment(draft, narrowedLoreForAlignment, narrowedVoicesForAlignment, options, memoryAxioms);
 
@@ -117,6 +155,12 @@ async function initializeContextNode(state: typeof RefinementState.State) {
     const activeLore = applyTemporalGating(resolveAllProfiles(prunedContext.lore, currentAbsoluteDay, options.calendarConfig));
     const activeVoices = applyTemporalGating(resolveAllProfiles(prunedContext.voices, currentAbsoluteDay, options.calendarConfig));
     const activeAuthorVoices = applyTemporalGating((options.authorVoices || []).filter((v: any) => v.isActive));
+
+    // --- STAGE 4: LORE DECAY CALCULATION ---
+    const chapterNumber = options.chapterNumber || 1;
+    // Scalar increases as story progresses (Mask Fraying logic)
+    // 1.0 at chapter 1, 0.5 at chapter 50, etc. (Safety threshold lowers)
+    const decayScalar = Math.max(0.5, 1.0 - (chapterNumber / 100));
 
     
     // Configurations (Sovereign Temperature Trap)
@@ -200,7 +244,8 @@ async function initializeContextNode(state: typeof RefinementState.State) {
         activeLore, activeVoices, activeAuthorVoices, currentAbsoluteDay,
         memoryAxioms, activeTimelineEvents, activeCharacterArcs,
         generationConfig, reportGenerationConfig, systemInstruction,
-        dynamicLoreThreshold, healingPasses: 0
+        dynamicLoreThreshold, healingPasses: 0,
+        chapterNumber, decayScalar
     };
 }
 
@@ -253,7 +298,7 @@ async function refinementNode(state: typeof RefinementState.State) {
     }
 
     const { parsed: parsedRefinement, combinedThinking } = await callWithInstructor({
-        model: generationConfig.model,
+        model: options.refinementModelOverride || generationConfig.model,
         prompt: userPrompt,
         systemInstruction,
         temperature: generationConfig.temperature,
@@ -282,8 +327,18 @@ async function auditNode(state: typeof RefinementState.State) {
         mandate
     } = state;
 
-    const { parsedAudit, needsHealing, entropyMetrics, combinedThinking } = await AuditEngine.performAudit(
+    // 1. DETERMINISTIC AUDIT (CODE DSE)
+    const { needsHealing: needsStylisticHealing, entropyMetrics, cleanedText, violations, fidelityScore } = await AuditEngine.performAudit(
         refinedText,
+        options,
+        activeLore,
+        activeVoices
+    );
+
+    // 2. LOGICAL AUDIT (AI PRO MIRROR EDITOR)
+    // We always run the Mirror Editor to get the high-fidelity Refinement Report and Hallucination checks.
+    const { parsedAudit, combinedThinking } = await MirrorEditor.generateReport(
+        cleanedText,
         options,
         activeLore,
         activeVoices,
@@ -294,24 +349,96 @@ async function auditNode(state: typeof RefinementState.State) {
         dynamicLoreThreshold
     );
 
+    // Logic for determining if we need healing based on BOTH audits
+    const isPro = SovereignEngine.isProModel(state.generationConfig.model);
+    
+    // ADJUSTED THRESHOLD: Apply Lore Decay (Mask Erosion)
+    const effectiveLoreThreshold = dynamicLoreThreshold * (state.decayScalar || 1.0);
+    const isLoreFailed = parsedAudit.audit && parsedAudit.audit.loreCompliance < effectiveLoreThreshold;
+    
+    const isVoiceFailed = parsedAudit.audit && (parsedAudit.audit.voiceFidelityScore < 7.0 || parsedAudit.audit.voiceAdherence < 7.0);
+    
+    const needsHealing = (options.healingLoopActive !== false) && (
+        needsStylisticHealing || 
+        isLoreFailed || 
+        isVoiceFailed || 
+        (isPro && parsedAudit.conflicts?.length > 0)
+    );
+
+    // Ensure entropy metrics are preserved
+    parsedAudit.entropy_metrics = entropyMetrics;
+
     return { 
+        refinedText: cleanedText, // Use purged text
         parsedAudit, 
         needsHealing,
         entropyMetrics,
+        fidelityScore,
         combinedThinking 
     };
 }
 
+/**
+ * inversionNode (Paragraph Shuffler):
+ * Code-only node that intercepts the prose to break metronome structures.
+ */
+async function inversionNode(state: typeof RefinementState.State) {
+    const { refinedText, activeLore, activeVoices } = state;
+    
+    // Proactive Audit: Run DSE directly to intercept structural flaws immediately after refinement
+    const { DeterministicStylisticEngine } = await import('./DeterministicStylisticEngine');
+    const dseResult = DeterministicStylisticEngine.analyze(refinedText, activeLore, activeVoices);
+    
+    // If paragraph metronome was detected in DSE, shuffle the start of the failing paragraphs.
+    if (dseResult.violations.some((v: any) => v.message.includes('Metronome'))) {
+        const paragraphs = refinedText.split(/\n\n+/);
+        const shuffled = paragraphs.map(p => {
+            // Simple heuristic shuffle: swap sentences if it starts with a transition
+            if (/^(However|Meanwhile|Additionally|Furthermore|First|Next|Then)\b/i.test(p)) {
+                const sentences = p.match(/[^.!?]+[.!?]+/g) || [p];
+                if (sentences.length > 1) {
+                    return [sentences[1].trim(), sentences[0].trim(), ...sentences.slice(2).map(s => s.trim())].filter(Boolean).join(' ');
+                }
+            }
+            return p;
+        }).join('\n\n');
+        
+        return { refinedText: shuffled };
+    }
+    
+    return {};
+}
+
+/**
+ * translationNode (Report Transcoder):
+ * Transcripts Audit findings into model-specific prompts for the Healing pass.
+ */
+async function translationNode(state: typeof RefinementState.State) {
+    const { parsedAudit, generationConfig } = state;
+    const translatedMandate = SovereignEngine.translateAudit(parsedAudit, generationConfig.model);
+    
+    return {
+        mechanicalMandates: translatedMandate
+    };
+}
+
 async function healingNode(state: typeof RefinementState.State) {
-    const { draft, refinedText, parsedAudit, options, systemInstruction, generationConfig, entropyMetrics, healingPasses = 0 } = state;
+    const { draft, refinedText, parsedAudit, options, systemInstruction, generationConfig, entropyMetrics, healingPasses = 0, mechanicalMandates } = state;
     const profile = INTENSITY_CONFIG[options.feedbackDepth || 'balanced'];
     const isPro = SovereignEngine.isProModel(generationConfig.model);
+
+    // ... (rest of healingNode logic using mechanicalMandates)
+
+    // DETERMINISTIC: Surgeon Node (AI Flash Lite)
+    // For surgical healing of failed blocks, we prefer the Flash Lite model for speed/efficiency 
+    // unless the user specifically wants the Pro model's reasoning for even the repairs.
+    const surgeonModel = options.healingModelOverride || (isPro ? generationConfig.model : 'gemini-3.1-flash-lite-preview');
 
     // Engine-driven directive generation
     const healingDirectives = HealingEngine.generateDirectives(state);
     
     let gritDirectives = '';
-    const gritConflicts = parsedAudit.conflicts?.filter((c: any) => c.sentence.includes('Burstiness') || c.sentence.includes('Ratio') || c.sentence === 'Rhythmic Mandate' || c.sentence === 'Lexical Mandate' || c.sentence === 'Negative Mandate Violation');
+    const gritConflicts = parsedAudit.conflicts?.filter((c: any) => c.sentence?.includes('Burstiness') || c.sentence?.includes('Ratio') || c.sentence === 'Rhythmic Mandate' || c.sentence === 'Lexical Mandate' || c.sentence === 'Negative Mandate Violation');
     
     if (gritConflicts && gritConflicts.length > 0) {
         gritDirectives = `\n<GRIT_MATH_MANDATES>\nYOUR PROSE PHYSICALLY FAILED THE PHYSICS ENGINE.\nYou MUST apply these mathematical fixes to the failed segments:\n${gritConflicts.map((c: any) => `- [PHYSICS]: ${c.sentence}\n  [MANDATE]: ${c.reason}`).join('\n')}\n</GRIT_MATH_MANDATES>\n`;
@@ -323,7 +450,7 @@ async function healingNode(state: typeof RefinementState.State) {
     const isPersistentFailure = healingPasses > 0 && isPro;
     const booster = isPersistentFailure ? "\n*** HIGH-ENTROPY BOOSTER ACTIVE ***\nYour previous repair pass failed the physics check. You are being too polite. You MUST use more jagged sentence structures. BREAK the predictable rhythm. Use fragments. Use harsh concrete nouns.\n" : "";
 
-    // --- PRO HARDENING: BLOCK-MODE HEALING ---
+    // --- PRO HARDENING: BLOCK-MODE HEALING (SURGEON NODE) ---
     if (isPro && entropyMetrics?.entropy_map?.length > 0) {
         const failBlocks = entropyMetrics.entropy_map.filter((seg: any) => seg.entropy_score < 0.5 && seg.violation);
         
@@ -341,11 +468,11 @@ async function healingNode(state: typeof RefinementState.State) {
 
     // Fallback to standard healing if not Pro or no blocks detected
     if (!healingPrompt) {
-        healingPrompt = `${booster}<ORIGINAL_DRAFT>\n${draft}\n</ORIGINAL_DRAFT>\n<FAILED_REFINEMENT>\n${refinedText}\n</FAILED_REFINEMENT>\n<AUDIT_REPORT>\n${parsedAudit.analysis}\n</AUDIT_REPORT>${healingDirectives}${gritDirectives}\n<TASK>Consult mandate and axioms, rewrite affected segments EXACTLY as instructed. The directives are higher priority than stylistic 'flow' - you MUST break the flow to fix the patterns.</TASK>`;
+        healingPrompt = `${booster}<ORIGINAL_DRAFT>\n${draft}\n</ORIGINAL_DRAFT>\n<FAILED_REFINEMENT>\n${refinedText}\n</FAILED_REFINEMENT>\n<AUDIT_REPORT>\n${parsedAudit.analysis || 'Standard Style Audit'}\n</AUDIT_REPORT>${mechanicalMandates || ''}${healingDirectives}${gritDirectives}\n<TASK>Consult mandate and axioms, rewrite affected segments EXACTLY as instructed. The directives are higher priority than stylistic 'flow' - you MUST break the flow to fix the patterns.</TASK>`;
     }
 
     const { parsed: parsedHealing, combinedThinking } = await callWithInstructor({
-        model: generationConfig.model,
+        model: surgeonModel,
         prompt: healingPrompt,
         systemInstruction,
         temperature: (generationConfig.temperature || 0.7) * profile.temperatureBias,
@@ -354,8 +481,14 @@ async function healingNode(state: typeof RefinementState.State) {
         onStream: options.onStream
     }, RefinementOutputSchema);
 
+    // --- STITCHER NODE (CODE) ---
+    // If we used block-mode, we ensure the integrity of the reassembly.
+    // In our current implementation, the AI returns the full text, but we could 
+    // implement a local diff/stitcher for even more precision.
+    const finalRefinedText = parsedHealing.refined_text || refinedText;
+
     return {
-        refinedText: parsedHealing.refined_text || refinedText,
+        refinedText: finalRefinedText,
         parsedRefinement: parsedHealing,
         healingPasses: 1, // Will be added by reducer
         combinedThinking
@@ -365,7 +498,7 @@ async function healingNode(state: typeof RefinementState.State) {
 function shouldHeal(state: typeof RefinementState.State) {
     const maxPasses = INTENSITY_CONFIG[state.options.feedbackDepth || 'balanced'].maxHealingPasses;
     if (state.needsHealing && state.healingPasses < maxPasses) {
-        return "heal";
+        return "translate_and_heal";
     }
     return END;
 }
@@ -375,17 +508,21 @@ const workflow = new StateGraph(RefinementState)
     .addNode("initialize", initializeContextNode)
     .addNode("sanitize", sanitizerNode)
     .addNode("refine", refinementNode)
+    .addNode("inversion", inversionNode)
     .addNode("audit", auditNode)
+    .addNode("translation", translationNode)
     .addNode("heal", healingNode)
     
     .addEdge(START, "initialize")
     .addEdge("initialize", "sanitize")
     .addEdge("sanitize", "refine")
-    .addEdge("refine", "audit")
+    .addEdge("refine", "inversion")
+    .addEdge("inversion", "audit")
     .addConditionalEdges("audit", shouldHeal, {
-        heal: "heal",
+        translate_and_heal: "translation",
         [END]: END
     })
+    .addEdge("translation", "heal")
     .addEdge("heal", "audit");
 
 export const refinementGraph = workflow.compile({ checkpointer: new DexieSaver() });

@@ -5,8 +5,10 @@ import { FocusArea, FeedbackDepth, DraftingStance } from '../types';
 interface ConfigState {
   // Engine Configuration
   model: string;
+  refinementModelOverride: string | null;
   refinementThinkingLevel: 'minimal' | 'low' | 'default' | 'high';
   reportModel: string;
+  healingModelOverride: string | null;
   reportThinkingLevel: 'minimal' | 'low' | 'default' | 'high';
   feedbackDepth: FeedbackDepth;
   refinementScope: 'scene' | 'chapter';
@@ -20,8 +22,10 @@ interface ConfigState {
 
   // Setters
   setModel: (model: string) => void;
+  setRefinementModelOverride: (model: string | null) => void;
   setRefinementThinkingLevel: (level: 'minimal' | 'low' | 'default' | 'high') => void;
   setReportModel: (model: string) => void;
+  setHealingModelOverride: (model: string | null) => void;
   setReportThinkingLevel: (level: 'minimal' | 'low' | 'default' | 'high') => void;
   setFeedbackDepth: (depth: FeedbackDepth) => void;
   setRefinementScope: (scope: 'scene' | 'chapter') => void;
@@ -39,8 +43,10 @@ export const useConfigStore = create<ConfigState>()(
     (set) => ({
       // Engine Defaults
       model: 'gemini-3-flash-preview',
+      refinementModelOverride: null,
       refinementThinkingLevel: 'default',
       reportModel: 'gemini-3-flash-preview',
+      healingModelOverride: null,
       reportThinkingLevel: 'high',
       feedbackDepth: 'balanced',
       refinementScope: 'scene',
@@ -53,8 +59,10 @@ export const useConfigStore = create<ConfigState>()(
       draftingStance: 'Standard Prose',
 
       setModel: (model) => set({ model }),
+      setRefinementModelOverride: (refinementModelOverride) => set({ refinementModelOverride }),
       setRefinementThinkingLevel: (refinementThinkingLevel) => set({ refinementThinkingLevel }),
       setReportModel: (reportModel) => set({ reportModel }),
+      setHealingModelOverride: (healingModelOverride) => set({ healingModelOverride }),
       setReportThinkingLevel: (reportThinkingLevel) => set({ reportThinkingLevel }),
       setFeedbackDepth: (feedbackDepth) => set({ feedbackDepth }),
       setRefinementScope: (refinementScope) => set({ refinementScope }),

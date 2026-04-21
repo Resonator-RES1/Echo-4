@@ -7,6 +7,8 @@ import * as db from '../../services/dbService';
 import { motion } from 'motion/react';
 import { useSeedingEngine } from '../../hooks/useSeedingEngine';
 import { synthesizeDynamicMemory } from '../../engines/gemini/edm';
+import { useConfigStore } from '../../stores/useConfigStore';
+import { AVAILABLE_MODELS } from '../../constants';
 
 interface SettingsScreenProps {
   showToast: (message: string) => void;
@@ -128,6 +130,45 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ showToast, onClo
                   <p className="text-[9px] text-on-surface-variant/50 leading-relaxed">
                     Your API key is stored locally in your browser and never sent to our servers. It is used only for refinement requests.
                   </p>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 border-b border-outline-variant/10 pb-2">
+                <BrainCircuit className="w-5 h-5 text-primary" />
+                <h2 className="font-headline text-xl text-on-surface">Refinement Model Overrides</h2>
+              </div>
+              <div className="bg-surface-container-lowest border border-outline-variant/10 rounded-xl p-5 shadow-sm space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-on-surface-variant/60">Refinement Model Override</label>
+                  <select
+                    value={useConfigStore.getState().refinementModelOverride || 'default'}
+                    onChange={(e) => {
+                      const val = e.target.value === 'default' ? null : e.target.value;
+                      useConfigStore.getState().setRefinementModelOverride(val);
+                      showToast('Refinement model updated.');
+                    }}
+                    className="w-full p-4 rounded-xl bg-surface-container-highest/20 border border-outline-variant/20 focus:border-primary/50 outline-none transition-all font-mono text-sm"
+                  >
+                    <option value="default">Use Process Default</option>
+                    {AVAILABLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-on-surface-variant/60">Healing Node Model Override</label>
+                  <select
+                    value={useConfigStore.getState().healingModelOverride || 'default'}
+                    onChange={(e) => {
+                      const val = e.target.value === 'default' ? null : e.target.value;
+                      useConfigStore.getState().setHealingModelOverride(val);
+                      showToast('Healing node model updated.');
+                    }}
+                    className="w-full p-4 rounded-xl bg-surface-container-highest/20 border border-outline-variant/20 focus:border-primary/50 outline-none transition-all font-mono text-sm"
+                  >
+                    <option value="default">Use Process Default</option>
+                    {AVAILABLE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
                 </div>
               </div>
             </section>
