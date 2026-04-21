@@ -19,6 +19,7 @@ import { useManuscriptStore } from '../stores/useManuscriptStore';
 import { useUIStore } from '../stores/useUIStore';
 import { useEditorUIStore } from '../stores/useEditorUIStore';
 import { useDisplayStore } from '../stores/useDisplayStore';
+import { useSpectralStore } from '../stores/useSpectralStore';
 import { useEditorLogic } from './useEditorLogic';
 import { useEditorActions } from './useEditorActions';
 import * as db from '../services/dbService';
@@ -86,6 +87,7 @@ export const useEditorState = (showToast: (message: string) => void) => {
   const [isIndexing, setIsIndexing] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanner, setScanner] = useState<ScannerInstances | null>(null);
+  const { isSpectralHUDEnabled, setSpectra, setSuggestions } = useSpectralStore();
 
   const { displayPrefs, setDisplayPrefs } = useDisplayStore();
 
@@ -171,6 +173,20 @@ export const useEditorState = (showToast: (message: string) => void) => {
     }, 800);
     return () => clearTimeout(timer);
   }, [draftState.present, setDebouncedDraft]);
+
+  // Spectral Focus Engine: Reactive Analysis
+  useEffect(() => {
+    if (isSpectralHUDEnabled && debouncedDraft) {
+      import('../engines/SpectralEngine').then(({ scanDraftSpectrum }) => {
+        const { ranges, suggestions } = scanDraftSpectrum(debouncedDraft);
+        setSpectra(ranges);
+        setSuggestions(suggestions);
+      });
+    } else if (!isSpectralHUDEnabled) {
+      setSpectra([]);
+      setSuggestions([]);
+    }
+  }, [debouncedDraft, isSpectralHUDEnabled, setSpectra, setSuggestions]);
 
   const handleShowComparison = useCallback(() => {
     setShowComparison(true);

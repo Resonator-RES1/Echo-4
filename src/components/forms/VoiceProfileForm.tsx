@@ -40,10 +40,7 @@ export function VoiceProfileForm({ onClose, onSave, initialData, isModal = true,
       parentId: initialData?.parentId || parentId,
       collectionId: initialData?.collectionId || parentProfile?.collectionId || voiceCollections.find(c => c.type === 'character')?.id || '',
       name: initialData?.name || parentProfile?.name || '',
-      gender: initialData?.gender || (parentId ? '' : (parentProfile?.gender || 'unspecified')),
-      archetype: initialData?.archetype || '',
-      arcState: initialData?.arcState || 'introduction',
-      emotionalBaseline: initialData?.emotionalBaseline || 'stoic',
+      archetype: initialData?.archetype || '', // We'll use this for 'Role & Identity'
       coreMotivation: initialData?.coreMotivation || '',
       aliases: initialData?.aliases?.join(', ') || '',
       soulPattern: initialData?.soulPattern || '',
@@ -118,7 +115,6 @@ export function VoiceProfileForm({ onClose, onSave, initialData, isModal = true,
         parentId: initialData.parentId,
         collectionId: initialData.collectionId || voiceCollections.find(c => c.type === 'character')?.id || '',
         name: initialData.name || '',
-        gender: initialData.gender || (initialData.parentId ? '' : 'unspecified'),
         archetype: initialData.archetype || '',
         coreMotivation: initialData.coreMotivation || '',
         aliases: initialData.aliases?.join(', ') || '',
@@ -167,10 +163,7 @@ export function VoiceProfileForm({ onClose, onSave, initialData, isModal = true,
         parentId: parentId,
         collectionId: parentProfile?.collectionId || voiceCollections.find(c => c.type === 'character')?.id || '',
         name: parentProfile?.name || '',
-        gender: parentId ? '' : (parentProfile?.gender || 'unspecified'),
         archetype: '',
-        arcState: 'introduction',
-        emotionalBaseline: 'stoic',
         coreMotivation: '',
         aliases: '',
         soulPattern: '',
@@ -213,10 +206,7 @@ export function VoiceProfileForm({ onClose, onSave, initialData, isModal = true,
         parentId: data.parentId,
         collectionId: data.collectionId,
         name: data.name,
-        gender: data.gender as any,
         archetype: data.archetype || '',
-        arcState: data.arcState,
-        emotionalBaseline: data.emotionalBaseline,
         coreMotivation: data.coreMotivation || '',
         aliases: data.aliases ? data.aliases.split(',').map(s => s.trim()).filter(Boolean) : [],
         soulPattern: data.soulPattern || '',
@@ -276,6 +266,9 @@ export function VoiceProfileForm({ onClose, onSave, initialData, isModal = true,
       setStep(2);
     }
   };
+
+  const nextStep = () => setStep(s => Math.min(s + 1, 3));
+  const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
   const formContent = (
     <FormProvider {...form}>
@@ -460,66 +453,49 @@ export function VoiceProfileForm({ onClose, onSave, initialData, isModal = true,
                 className="h-full space-y-8 overflow-y-auto custom-scrollbar pr-2"
               >
               <div className="space-y-1">
-                <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Name</label>
+                <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Identity Name</label>
                 <input 
                   {...form.register('name')}
                   placeholder={parentProfile?.name || "Untitled Character"}
-                  className="w-full bg-transparent border-none text-4xl font-headline font-light text-on-surface placeholder:text-on-surface-variant/20 outline-none p-0"
+                  className="w-full bg-transparent border-none text-4xl font-headline font-bold text-on-surface placeholder:text-on-surface-variant/20 outline-none p-0"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Collection</label>
-                  <select {...form.register('collectionId')} className="w-full bg-surface-container-highest/30 border border-outline-variant/20 rounded-lg p-3 text-sm">
-                    {voiceCollections.filter(c => c.type === 'character').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                   <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Archetypal Resonator (Role)</label>
+                   <Input {...form.register('archetype')} placeholder={parentProfile?.archetype || "e.g., The Reluctant Guardian"} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-3" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Gender</label>
-                  <Input {...form.register('gender')} placeholder={parentProfile?.gender || "e.g., Male, Female"} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-3" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Archetype</label>
-                  <Input {...form.register('archetype')} placeholder={parentProfile?.archetype || "e.g., The Reluctant Hero"} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-3" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Arc State</label>
-                  <select {...form.register('arcState')} className="w-full bg-surface-container-highest/30 border border-outline-variant/20 rounded-lg p-3 text-sm">
-                    <option value="introduction">Introduction</option>
-                    <option value="development">Development</option>
-                    <option value="climax">Climax</option>
-                    <option value="resolution">Resolution</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Emotional Baseline</label>
-                  <select {...form.register('emotionalBaseline')} className="w-full bg-surface-container-highest/30 border border-outline-variant/20 rounded-lg p-3 text-sm">
-                    <option value="stoic">Stoic</option>
-                    <option value="volatile">Volatile</option>
-                    <option value="melancholic">Melancholic</option>
-                    <option value="optimistic">Optimistic</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Aliases</label>
-                  <Input {...form.register('aliases')} placeholder={parentProfile?.aliases?.join(', ') || "Comma separated..."} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-3" />
+                   <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Aliases / Shadows</label>
+                   <Input {...form.register('aliases')} placeholder={parentProfile?.aliases?.join(', ') || "Other names..."} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-3" />
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1 flex items-center justify-between">
-                  Baseline Motivation {(parentId || initialData?.parentId) && <span className="text-primary/60 italic">(Leave blank to inherit)</span>}
-                  <button type="button" onClick={() => handlePromoteToTension('coreMotivation')} className="text-secondary hover:text-secondary/80 transition-colors flex items-center gap-1 font-black"><PlusCircle className="w-3 h-3" /> PROMOTE</button>
-                </label>
-                <Textarea {...form.register('coreMotivation')} placeholder={parentProfile?.coreMotivation || "What is their default, surface-level drive?"} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[120px]" />
+
+              <div className="p-6 bg-primary/5 border border-primary/20 rounded-2xl space-y-6">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-label uppercase tracking-widest text-primary/60 ml-1 flex items-center justify-between">
+                    The Kinetic Objective (Motivation)
+                    <button type="button" onClick={() => handlePromoteToTension('coreMotivation', 'survival')} className="text-secondary hover:text-secondary/80 transition-colors flex items-center gap-1 font-black"><PlusCircle className="w-3 h-3" /> PROMOTE</button>
+                  </label>
+                  <Textarea {...form.register('coreMotivation')} placeholder="What is the singular force that prevents this identity from disintegrating?" className="bg-surface-container-low border-none rounded-xl p-4 min-h-[100px] leading-relaxed italic" />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-label uppercase tracking-widest text-primary/60 ml-1 flex items-center justify-between">
+                    Sovereign Soul Pattern (Axioms)
+                    <button type="button" onClick={() => handlePromoteToTension('soulPattern', 'integrity')} className="text-secondary hover:text-secondary/80 transition-colors flex items-center gap-1 font-black"><PlusCircle className="w-3 h-3" /> PROMOTE</button>
+                  </label>
+                  <Textarea {...form.register('soulPattern')} placeholder="The unyielding behaviors and structural quirks. 'How they inhabit the world'." className="bg-surface-container-low border-none rounded-xl p-4 min-h-[100px] leading-relaxed italic" />
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1 flex items-center justify-between">
-                  Baseline Soul Pattern {(parentId || initialData?.parentId) && <span className="text-primary/60 italic">(Leave blank to inherit)</span>}
-                  <button type="button" onClick={() => handlePromoteToTension('soulPattern')} className="text-secondary hover:text-secondary/80 transition-colors flex items-center gap-1 font-black"><PlusCircle className="w-3 h-3" /> PROMOTE</button>
-                </label>
-                <Textarea {...form.register('soulPattern')} placeholder={parentProfile?.soulPattern || "The standard 'Hard Rules' of their voice..."} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[120px]" />
+
+              <div className="space-y-4 pt-4 border-t border-outline-variant/10">
+                 <div>
+                   <h4 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Linguistic DNA</h4>
+                   <p className="text-[8px] text-on-surface-variant/40 mt-0.5">The baseline cognitive pressure of their expression.</p>
+                 </div>
+                 <VoiceDNA />
               </div>
             </motion.div>
           ) : step === 2 ? (
@@ -596,211 +572,154 @@ export function VoiceProfileForm({ onClose, onSave, initialData, isModal = true,
                 )}
               </div>
             </motion.div>
-          ) : step === 3 ? (
-            <motion.div 
-              key="step3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="h-full space-y-8 overflow-y-auto custom-scrollbar pr-2"
-            >
-              <div className="flex flex-col items-center justify-center py-4">
-                <VoiceDNA data={dna} color="var(--color-primary)" size={200} />
-                {(parentId || initialData?.parentId) && <p className="text-[9px] font-black uppercase tracking-widest text-primary/60 mt-4">Evolutionary Drift from Base</p>}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {Object.keys(dna).map((key) => (
-                  <div key={key} className="space-y-3 p-4 bg-surface-container-highest/20 rounded-xl border border-outline-variant/10">
-                    <div className="flex justify-between text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60">
-                      <span className="font-bold">{key}</span>
-                      <span className="font-mono">{dna[key as keyof typeof dna]}%</span>
-                    </div>
-                    <input type="range" min="0" max="100" {...form.register(`dna.${key as keyof typeof dna}`, { valueAsNumber: true })} className="w-full accent-primary h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer" />
-                    <Textarea {...form.register(`dnaDescriptions.${key as keyof typeof dna}` as any)} placeholder={parentProfile?.dnaDescriptions?.[key as keyof typeof dna] || `Describe ${key}...`} className="bg-transparent border-none p-0 min-h-[60px] resize-none text-xs italic" />
-                  </div>
-                ))}
-              </div>
-            </motion.div>
           ) : (
             <motion.div 
-              key="step4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
+              key="step3"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               className="h-full space-y-8 overflow-y-auto custom-scrollbar pr-2"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   <div className="pb-2 border-b border-outline-variant/10 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-secondary" />
-                    <h3 className="text-sm font-bold text-on-surface">Interaction Physics</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-on-surface">Interaction Physics</h3>
                   </div>
-                  <div className="space-y-3 p-4 bg-secondary/5 rounded-xl border border-secondary/10">
+                  
+                  <div className="space-y-3 p-4 bg-secondary/5 rounded-2xl border border-secondary/10 shadow-inner">
                     <label className="flex justify-between text-[9px] font-label uppercase tracking-widest text-secondary ml-1">
                       Interaction Polarity 
                       <span className="font-mono">{(form.watch('interactionPolarity') * 100).toFixed(0)}%</span>
                     </label>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[8px] text-on-surface-variant/40 uppercase tracking-tighter">Pleaser</span>
-                      <input type="range" min="0" max="1" step="0.01" {...form.register('interactionPolarity', { valueAsNumber: true })} className="flex-1 accent-secondary h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer" />
-                      <span className="text-[8px] text-on-surface-variant/40 uppercase tracking-tighter">Seeker</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[8px] text-on-surface-variant/40 uppercase tracking-tighter">Yielding</span>
+                      <input type="range" min="0" max="1" step="0.01" {...form.register('interactionPolarity', { valueAsNumber: true })} className="flex-1 accent-secondary h-1.5 bg-surface-container-highest rounded-full appearance-none cursor-pointer" />
+                      <span className="text-[8px] text-on-surface-variant/40 uppercase tracking-tighter">Frictional</span>
                     </div>
-                    <p className="text-[8px] text-on-surface-variant/40 italic">Determines the character's baseline social aggression during dialogue simulation.</p>
                   </div>
+
                   <div className="space-y-1">
                     <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Crack Strategy (Destabilization)</label>
-                    <Textarea {...form.register('crackStrategy')} placeholder="How does the character react when their Performance fails? Violent outburst? Cold retreat? Nervous stutter?" className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[100px]" />
+                    <Textarea {...form.register('crackStrategy')} placeholder="How does the character react when their mask (Performance) slips? Panic? Total coldness? Regression?" className="bg-surface-container-highest/30 border-outline-variant/20 rounded-xl p-4 min-h-[100px] leading-relaxed" />
                   </div>
                 </div>
 
                 <div className="space-y-6">
                   <div className="pb-2 border-b border-outline-variant/10 flex items-center gap-2">
                     <Fingerprint className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-bold text-on-surface">Negative Space & Coexistence</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-on-surface">Sovereign Boundaries</h3>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">The "NOT" Filter (Sovereign Safeguard)</label>
-                    <Textarea {...form.register('negativeSpace')} placeholder="Anya is NOT cold... she is neutral. She is NOT predatory... she is transactional." className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[100px]" />
-                    <p className="text-[8px] text-on-surface-variant/40 mt-1 italic">Define what the character is NOT to prevent automatic genre-drift or generic tropes.</p>
+                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Negative Space (The "NOT" Filter)</label>
+                    <Textarea {...form.register('negativeSpace')} placeholder="Define what the identity is NOT to prevent automatic AI homogenization (e.g., 'Not a victim', 'Not clinical')." className="bg-surface-container-highest/30 border-outline-variant/20 rounded-xl p-4 min-h-[100px] leading-relaxed" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Unresolved Forces (The "Ghost" State)</label>
-                    <Textarea {...form.register('unresolvedCoexistence')} placeholder="The warmth is genuine but the performer is split. Warmth and Indifference coexist without resolution." className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[100px]" />
-                    <p className="text-[8px] text-on-surface-variant/40 mt-1 italic">Describe cohabiting forces that do not resolve into a single state.</p>
+                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Unresolved Coexistence (Ghost Logic)</label>
+                    <Textarea {...form.register('unresolvedCoexistence')} placeholder="Forces that exist simultaneously without resolving. (e.g., 'A deep love that manifests as absolute indifference')." className="bg-surface-container-highest/30 border-outline-variant/20 rounded-xl p-4 min-h-[100px] leading-relaxed" />
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-6">
-                  <div className="pb-2 border-b border-outline-variant/10 flex items-center gap-2">
+              <div className="space-y-6">
+                 <div className="pb-2 border-b border-outline-variant/10 flex items-center gap-2">
                     <Brain className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-bold text-on-surface">Cognitive Defaults</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-on-surface">Lexical Fingerprint</h3>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1 flex items-center justify-between">
-                      Speech Patterns {(parentId || initialData?.parentId) && <span className="text-primary/60 italic">(Leave blank to inherit)</span>}
-                      <button type="button" onClick={() => handlePromoteToTension('cognitiveSpeech', 'cognition')} className="text-secondary hover:text-secondary/80 transition-colors flex items-center gap-1 font-black"><PlusCircle className="w-3 h-3" /> PROMOTE</button>
-                    </label>
-                    <Textarea {...form.register('cognitiveSpeech')} placeholder={parentProfile?.cognitiveSpeech || "Cognitive Speech Patterns..."} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[100px]" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1 flex items-center justify-between">
+                        Cognitive Speech Defaults
+                        <button type="button" onClick={() => handlePromoteToTension('cognitiveSpeech', 'cognition')} className="text-secondary hover:text-secondary/80 transition-colors flex items-center gap-1 font-black"><PlusCircle className="w-3 h-3" /> PROMOTE</button>
+                      </label>
+                      <Textarea {...form.register('cognitiveSpeech')} placeholder="Syntax preferences, favored sentence structures, and rhythmic biases." className="bg-surface-container-highest/30 border-outline-variant/20 rounded-xl p-4 min-h-[120px] leading-relaxed" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Idioms & Anti-Mannerisms</label>
+                      <Textarea {...form.register('idioms')} placeholder="Favorites: 'Indeed', 'Nonsense'. Anti-Mannerisms (NEVER): 'I guess', 'Maybe'." className="bg-surface-container-highest/30 border-outline-variant/20 rounded-xl p-4 min-h-[120px] leading-relaxed" />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1 flex items-center justify-between">
-                      Signature Traits
-                      <button type="button" onClick={() => handlePromoteToTension('signatureTraits', 'social')} className="text-secondary hover:text-secondary/80 transition-colors flex items-center gap-1 font-black"><PlusCircle className="w-3 h-3" /> PROMOTE</button>
-                    </label>
-                    <Textarea {...form.register('signatureTraits')} placeholder={parentProfile?.signatureTraits?.join(', ') || "Signature Traits (comma separated)..."} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[100px]" />
-                  </div>
-                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-6">
-                  <div className="pb-2 border-b border-outline-variant/10 flex items-center gap-2">
-                    <Quote className="w-4 h-4 text-on-surface-variant" />
-                    <h3 className="text-sm font-bold text-on-surface">Linguistic Flavor</h3>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Idioms & Slang</label>
-                    <Textarea {...form.register('idioms')} placeholder={parentProfile?.idioms?.join(', ') || "Idioms & Slang..."} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[100px]" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Negative DNA (Anti-Mannerisms)</label>
-                    <Textarea {...form.register('antiMannerisms')} placeholder={parentProfile?.antiMannerisms?.join(', ') || "What this character NEVER does..."} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[80px]" />
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="pb-2 border-b border-outline-variant/10 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-secondary" />
-                    <h3 className="text-sm font-bold text-on-surface">Secondary Socials</h3>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Conflict Style</label>
-                    <Textarea {...form.register('conflictStyle')} placeholder={parentProfile?.conflictStyle || "Conflict Style..."} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[100px]" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-label uppercase tracking-widest text-on-surface-variant/60 ml-1">Conversational Role</label>
-                    <Textarea {...form.register('conversationalRole')} placeholder={parentProfile?.conversationalRole || "Conversational Role..."} className="bg-surface-container-highest/30 border-outline-variant/20 rounded-lg p-4 min-h-[100px]" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Dynamic Lists */}
-              <div className="space-y-8">
-                <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Fingerprint className="w-4 h-4 text-primary" />
-                    <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant/60">Gold Standard Snapshots</h4>
-                  </div>
-                  <button type="button" onClick={() => appendGold({ id: Date.now().toString(), label: '', snippet: '', createdAt: new Date().toISOString() })} className="text-xs text-primary font-bold">Add Snapshot</button>
-                </div>
-                <div className="grid grid-cols-1 gap-4">
-                  {goldFields.map((field, idx) => (
-                    <div key={field.id} className="p-5 bg-primary/5 border border-primary/10 rounded-xl space-y-4 relative group/gold">
-                      <button type="button" onClick={() => removeGold(idx)} className="absolute top-4 right-4 text-on-surface-variant/20 hover:text-error transition-colors"><Trash2 className="w-4 h-4" /></button>
-                      <div className="space-y-3">
-                        <Input {...form.register(`goldStandardSnippets.${idx}.label`)} placeholder="Vibe Label (e.g., Clinical Observation)" className="bg-surface-container-low rounded-xl h-10 text-xs font-bold" />
-                        <Textarea {...form.register(`goldStandardSnippets.${idx}.snippet`)} placeholder="Paste your highest fidelity, author-verified prose here..." className="bg-surface-container-low rounded-xl min-h-[120px] text-xs leading-relaxed" />
+              <div className="p-8 bg-surface-container-highest/20 border border-outline-variant/10 rounded-2xl">
+                 <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60">Relational & Sensory Anchors</h4>
+                    <span className="text-[8px] text-on-surface-variant/40 italic">Supplemental Data for High-Fidelity Simulations</span>
+                 </div>
+                 
+                 <div className="space-y-8">
+                    {/* Gold Standards */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-primary">Gold Standard Snippets</span>
+                        <button type="button" onClick={() => appendGold({ id: Date.now().toString(), label: '', snippet: '', createdAt: new Date().toISOString() })} className="text-[8px] bg-primary/10 text-primary px-2 py-0.5 rounded hover:bg-primary/20">Add Snapshot</button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4">
+                        {goldFields.map((field, idx) => (
+                          <div key={field.id} className="p-4 bg-surface-container-low border border-outline-variant/10 rounded-xl space-y-3 relative group">
+                            <button type="button" onClick={() => removeGold(idx)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-error/40 hover:text-error"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <Input {...form.register(`goldStandardSnippets.${idx}.label`)} placeholder="Sample Label (e.g. Dialogue Peak)" className="bg-transparent border-b border-outline-variant/10 rounded-none h-8 text-[10px]" />
+                            <Textarea {...form.register(`goldStandardSnippets.${idx}.snippet`)} placeholder="Author-verified prose..." className="bg-transparent border-none p-0 text-[10px] min-h-[60px]" />
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant/60">Physical Tells</h4>
-                    <button type="button" onClick={() => appendTell({ value: '' })} className="text-xs text-primary font-bold">Add Tell</button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {tellFields.map((field, idx) => (
-                      <div key={field.id} className="flex gap-2">
-                        <Input {...form.register(`physicalTells.${idx}.value`)} placeholder="e.g., Taps fingers" className="bg-surface-container-highest/30 border-outline-variant/20 rounded-xl flex-1" />
-                        <button type="button" onClick={() => removeTell(idx)} className="text-error/40 hover:text-error transition-colors"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                    {/* Physical Tells & Dialogue Examples Combined for Space */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div className="space-y-3">
+                         <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/60">Physical Tells</span>
+                            <button type="button" onClick={() => appendTell({ value: '' })} className="text-[8px] text-primary">+</button>
+                         </div>
+                         {tellFields.map((field, idx) => (
+                          <div key={field.id} className="flex gap-2">
+                            <Input {...form.register(`physicalTells.${idx}.value`)} placeholder="Fidgets with ring..." className="bg-surface-container-highest/30 border-none h-8 text-[10px]" />
+                            <button type="button" onClick={() => removeTell(idx)} className="text-error/30"><X className="w-3 h-3" /></button>
+                          </div>
+                        ))}
+                       </div>
+                       <div className="space-y-3">
+                         <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/60">Example Dialogue</span>
+                            <button type="button" onClick={() => appendLine({ value: '' })} className="text-[8px] text-primary">+</button>
+                         </div>
+                         {lineFields.map((field, idx) => (
+                          <div key={field.id} className="flex gap-2">
+                            <Input {...form.register(`exampleLines.${idx}.value`)} placeholder='"Quiet now."' className="bg-surface-container-highest/30 border-none h-8 text-[10px]" />
+                            <button type="button" onClick={() => removeLine(idx)} className="text-error/30"><X className="w-3 h-3" /></button>
+                          </div>
+                        ))}
+                       </div>
+                    </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant/60">Example Dialogue</h4>
-                    <button type="button" onClick={() => appendLine({ value: '' })} className="text-xs text-primary font-bold">Add Line</button>
-                  </div>
-                  <div className="space-y-3">
-                    {lineFields.map((field, idx) => (
-                      <div key={field.id} className="flex gap-2">
-                        <Input {...form.register(`exampleLines.${idx}.value`)} placeholder='"I don&apos;t think so..."' className="bg-surface-container-highest/30 border-outline-variant/20 rounded-xl flex-1" />
-                        <button type="button" onClick={() => removeLine(idx)} className="text-error/40 hover:text-error transition-colors"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant/60">Relationships</h4>
-                    <button type="button" onClick={() => appendRel({ targetId: '', type: '', tension: 3, context: '' })} className="text-xs text-primary font-bold">Add Relation</button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {relFields.map((field, idx) => (
-                      <div key={field.id} className="p-4 bg-surface-container-highest/20 border border-outline-variant/10 rounded-xl space-y-3 relative group/rel">
-                        <button type="button" onClick={() => removeRel(idx)} className="absolute top-3 right-3 text-on-surface-variant/20 hover:text-error transition-colors"><Trash2 className="w-4 h-4" /></button>
-                        <div className="grid grid-cols-2 gap-3">
-                          <select {...form.register(`relationships.${idx}.targetId`)} className="bg-surface-container-low rounded-xl p-2 text-xs">
-                            <option value="">Target...</option>
-                            {voiceProfiles.filter(p => p.id !== initialData?.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                          </select>
-                          <Input {...form.register(`relationships.${idx}.type`)} placeholder="Type" className="bg-surface-container-low rounded-xl h-8 text-xs" />
-                        </div>
-                        <input type="range" min="1" max="5" {...form.register(`relationships.${idx}.tension`, { valueAsNumber: true })} className="w-full accent-primary h-1" />
-                        <Input {...form.register(`relationships.${idx}.context`)} placeholder="Context..." className="bg-surface-container-low rounded-xl h-8 text-xs" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                    {/* Relationships */}
+                    <div className="space-y-3 pt-4 border-t border-outline-variant/10">
+                       <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/60">Dynamic Relationships</span>
+                          <button type="button" onClick={() => appendRel({ targetId: '', type: '', tension: 3, context: '' })} className="text-[8px] text-primary">+</button>
+                       </div>
+                       <div className="grid grid-cols-1 gap-3">
+                          {relFields.map((field, idx) => (
+                            <div key={field.id} className="grid grid-cols-4 gap-2 items-center p-2 bg-surface-container-low rounded-lg border border-outline-variant/10 group">
+                              <select {...form.register(`relationships.${idx}.targetId`)} className="bg-transparent text-[9px] font-bold col-span-1">
+                                <option value="">Select Target...</option>
+                                {voiceProfiles.filter(p => p.id !== initialData?.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                              </select>
+                              <Input {...form.register(`relationships.${idx}.type`)} placeholder="Bond Type" className="bg-transparent border-none text-[9px] h-6 col-span-1" />
+                              <div className="flex items-center gap-2 col-span-1">
+                                 <span className="text-[7px] text-on-surface-variant/40">Tension</span>
+                                 <input type="range" min="1" max="5" {...form.register(`relationships.${idx}.tension`, { valueAsNumber: true })} className="w-full accent-primary h-1" />
+                              </div>
+                              <div className="flex items-center gap-2 col-span-1">
+                                <Input {...form.register(`relationships.${idx}.context`)} placeholder="Brief context..." className="bg-transparent border-none text-[9px] h-6 flex-1" />
+                                <button type="button" onClick={() => removeRel(idx)} className="text-error/30 opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button>
+                              </div>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                 </div>
               </div>
             </motion.div>
           )}
@@ -825,19 +744,19 @@ export function VoiceProfileForm({ onClose, onSave, initialData, isModal = true,
           <div className="flex items-center justify-between w-full">
             {activeTab === 'edit' ? (
               <>
-                <Button type="button" variant="ghost" onClick={step === 1 ? onClose : () => setStep(step - 1)}>
+                <Button type="button" variant="ghost" onClick={step === 1 ? onClose : prevStep}>
                   {step === 1 ? 'Discard' : <><ChevronLeft className="w-4 h-4 mr-2" /> Back</>}
                 </Button>
                 <div className="flex gap-2">
-                  {step < 4 ? (
-                    <Button type="button" onClick={(e) => { e.preventDefault(); setStep(step + 1); }} className="bg-primary text-on-primary rounded-full px-8">
+                  {step < 3 ? (
+                    <Button type="button" onClick={nextStep} className="bg-primary text-on-primary rounded-full px-8 h-10 text-[11px] font-black uppercase tracking-widest">
                       Continue <ChevronRight className="w-4 h-4 ml-2" />
                     </Button>
                   ) : (
                     <Button 
                       type="submit" 
                       disabled={isSaving} 
-                      className={`rounded-full px-8 transition-all ${isSaved ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-primary text-on-primary'}`}
+                      className={`h-10 text-[11px] font-black uppercase tracking-widest rounded-full px-10 transition-all ${isSaved ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-primary text-on-primary'}`}
                     >
                       {isSaved ? (
                         <><CheckIcon className="w-4 h-4 mr-2" /> Committed</>
@@ -858,7 +777,7 @@ export function VoiceProfileForm({ onClose, onSave, initialData, isModal = true,
                 <Button 
                   type="submit" 
                   disabled={isSaving} 
-                  className={`rounded-full px-8 transition-all ${isSaved ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-primary text-on-primary'}`}
+                  className={`h-10 text-[11px] font-black uppercase tracking-widest rounded-full px-10 transition-all ${isSaved ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-primary text-on-primary'}`}
                 >
                   {isSaved ? (
                     <><CheckIcon className="w-4 h-4 mr-2" /> Saved</>

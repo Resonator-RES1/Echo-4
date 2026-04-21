@@ -6,6 +6,8 @@ import Typography from '@tiptap/extension-typography';
 import Dropcursor from '@tiptap/extension-dropcursor';
 import { Markdown } from 'tiptap-markdown';
 import { LoreHighlight } from './extensions/LoreHighlight';
+import { SpectralHighlight } from './extensions/SpectralHighlight';
+import { useSpectralStore } from '../../stores/useSpectralStore';
 
 interface RichTextEditorProps {
   content: string;
@@ -49,6 +51,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = React.memo(({
     onSelectionChangeRef.current = onSelectionChange;
   }, [onSelectionChange]);
 
+  const { isSpectralHUDEnabled, setSpectra, setSuggestions } = useSpectralStore();
+
   const extensions = useMemo(() => [
     StarterKit.configure({
       codeBlock: false,
@@ -73,8 +77,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = React.memo(({
     LoreHighlight.configure({
       loreTerms,
       onTermClick: onLoreTermClick
+    }),
+    SpectralHighlight.configure({
+      enabled: isSpectralHUDEnabled,
+      onUpdate: (ranges, suggestions) => {
+          setSpectra(ranges);
+          setSuggestions(suggestions);
+      }
     })
-  ], [placeholder, loreTerms, onLoreTermClick]);
+  ], [placeholder, loreTerms, onLoreTermClick, isSpectralHUDEnabled, setSpectra, setSuggestions]);
 
   const editor = useEditor({
     extensions,
@@ -125,10 +136,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = React.memo(({
     };
   }, []);
 
-  // Sync display preferences
+  // Sync display preferences and extensions
   useEffect(() => {
     if (editor) {
       editor.setOptions({
+        extensions,
         editorProps: {
           attributes: {
             class: `prose prose-theme max-w-none focus:outline-none min-h-full text-on-surface ${className}`,
@@ -140,8 +152,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = React.memo(({
           },
         },
       });
+      // Force a transaction to trigger the plugin update for the Spectral HUD
+      if (isSpectralHUDEnabled) {
+          editor.view.dispatch(editor.state.tr);
+      }
     }
-  }, [editor, fontSize, lineHeight, paragraphSpacing, className]);
+  }, [editor, fontSize, lineHeight, paragraphSpacing, className, extensions, isSpectralHUDEnabled]);
 
   // Sync external content changes (e.g. from Echo Archive or Scene switching)
   useEffect(() => {

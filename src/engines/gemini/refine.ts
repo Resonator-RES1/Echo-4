@@ -179,6 +179,7 @@ export const refineDraft = async (options: RefineDraftOptions): Promise<RefineDr
   const refinedOptions = {
       ...options,
       refinementModelOverride: options.refinementModelOverride || store.refinementModelOverride || undefined,
+      reportModelOverride: options.reportModelOverride || store.reportModel || undefined,
       healingModelOverride: options.healingModelOverride || store.healingModelOverride || undefined,
   };
   

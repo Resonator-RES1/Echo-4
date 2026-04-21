@@ -8,9 +8,9 @@ export const Toast: React.FC<{ message: string; onClose: () => void }> = ({ mess
     }, [onClose]);
 
     return (
-        <div className="fixed bottom-6 right-6 bg-emerald-600 text-white px-5 py-3.5 rounded-[0.75rem] shadow-lg flex items-center gap-3 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-            <CheckCircle className="w-5 h-5" />
-            <span className="font-label text-sm font-medium tracking-wide">{message}</span>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-surface-container-highest/90 backdrop-blur-xl text-on-surface px-4 py-2.5 rounded-full border border-white/5 shadow-2xl flex items-center gap-3 z-[100] animate-in slide-in-from-bottom-2 fade-in duration-500">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="font-label text-[9px] font-black uppercase tracking-[0.2em]">{message}</span>
         </div>
     );
 };

@@ -60,10 +60,7 @@ export const voiceProfileSchema = z.object({
   id: z.string().optional(),
   collectionId: z.string().optional(),
   name: z.string().min(1, "Name is required"),
-  gender: z.enum(['male', 'female', 'non-binary', 'unspecified', 'other']).optional(),
-  archetype: z.string().optional(),
-  arcState: z.enum(['introduction', 'development', 'climax', 'resolution']).optional(), // NEW
-  emotionalBaseline: z.enum(['stoic', 'volatile', 'melancholic', 'optimistic']).optional(), // NEW
+  archetype: z.string().optional().describe("Role or Archetypal Resonator"),
   coreMotivation: z.string().optional(),
   soulPattern: z.string().optional(),
   cognitiveSpeech: z.string().optional(),

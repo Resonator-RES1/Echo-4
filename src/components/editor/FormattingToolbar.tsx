@@ -1,6 +1,7 @@
 import React from 'react';
-import { Bold, Italic, List, ListOrdered, Quote, Heading3, BookOpen, Users, Strikethrough, Code, Sparkles, Settings2 } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Quote, Heading3, BookOpen, Users, Strikethrough, Code, Sparkles, Settings2, Focus } from 'lucide-react';
 import { Editor } from '@tiptap/react';
+import { useSpectralStore } from '../../stores/useSpectralStore';
 
 interface FormattingToolbarProps {
     editor: Editor | null;
@@ -23,6 +24,8 @@ export const FormattingToolbar: React.FC<FormattingToolbarProps> = React.memo(({
         { type: 'ol', icon: ListOrdered, title: 'Numbered List', action: () => editor?.chain().focus().toggleOrderedList().run(), isActive: () => editor?.isActive('orderedList') },
     ] as const;
 
+    const { isSpectralHUDEnabled, setHUDEnabled } = useSpectralStore();
+
     return (
         <div className="flex items-center justify-center gap-2">
             <div className="flex items-center justify-center gap-1">
@@ -42,6 +45,18 @@ export const FormattingToolbar: React.FC<FormattingToolbarProps> = React.memo(({
                  ))}
                  
                  <div className="w-px h-4 bg-outline-variant/20 mx-1" />
+
+                 <button
+                    onClick={() => setHUDEnabled(!isSpectralHUDEnabled)}
+                    title={isSpectralHUDEnabled ? "Disable Spectral HUD" : "Enable Spectral HUD (X-Ray)"}
+                    className={`p-2.5 rounded-[0.5rem] transition-all duration-200 ${
+                        isSpectralHUDEnabled 
+                        ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' 
+                        : 'text-on-surface-variant hover:text-amber-500 hover:bg-surface-container-highest'
+                    }`}
+                >
+                    <Focus className="w-4 h-4" />
+                </button>
                  
                  <button
                     onClick={onToggleDisplayHUD}

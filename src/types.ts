@@ -284,6 +284,7 @@ export interface RefineDraftOptions {
   isSurgical?: boolean;
   scope?: 'scene' | 'chapter';
   refinementModelOverride?: string;
+  reportModelOverride?: string;
   healingModelOverride?: string;
   healingLoopActive?: boolean;
   isReRefinement?: boolean;

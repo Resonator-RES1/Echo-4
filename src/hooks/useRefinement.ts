@@ -168,8 +168,20 @@ export const useRefinement = (props: RefinementPresetsProps) => {
             // setFeedbackDepth('balanced'); // Removed
             
             let finalRefinedText = result.text;
-            let extractedTitle = '';
+            let extractedTitle = result.title || '';
             
+            // TITLES DISAPPEARING FIX: Check if original draft had a title and refined one doesn't
+            const originalLines = fullDraft.trimStart().split('\n');
+            const hasOriginalTitle = originalLines[0]?.startsWith('# ');
+            const refinedLines = result.text.trimStart().split('\n');
+            const hasRefinedTitle = refinedLines[0]?.startsWith('# ');
+
+            if (hasOriginalTitle && !hasRefinedTitle) {
+                // Prepend original title if model stripped it
+                finalRefinedText = `${originalLines[0]}\n\n${result.text}`;
+                if (!extractedTitle) extractedTitle = originalLines[0].replace(/^#+\s*/, '').trim();
+            }
+
             if (isTargeted && editorRef?.current) {
                  const currentState = editorRef.current.state;
                  const token = `ECHOREFINETOKEN${Date.now()}`;

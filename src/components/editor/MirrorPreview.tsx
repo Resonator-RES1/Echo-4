@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { AlertCircle, Zap, Fingerprint, Book } from 'lucide-react';
+import { AlertCircle, Zap, Fingerprint, Book, Sparkles } from 'lucide-react';
 import { ContinuityIssue } from '../../types';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ReportThinkingFlow } from '../flowrail/ReportThinkingFlow';
 
 interface MirrorPreviewProps {
@@ -26,9 +26,9 @@ export const MirrorPreview: React.FC<MirrorPreviewProps> = ({
   const [activeTab, setActiveTab] = React.useState<'preview' | 'thoughts'>('preview');
 
   const displayLines = useMemo(() => {
-    const content = isRefining && streamingText ? streamingText : (isSurgical && selection ? selection.text : text);
+    const content = (isSurgical && selection ? selection.text : text);
     return content.split('\n');
-  }, [text, selection, isSurgical, streamingText, isRefining]);
+  }, [text, selection, isSurgical]);
 
   const wordCount = useMemo(() => {
     const content = isRefining && streamingText ? streamingText : (isSurgical && selection ? selection.text : text);
@@ -103,8 +103,32 @@ export const MirrorPreview: React.FC<MirrorPreviewProps> = ({
           </div>
 
           {/* Preview Content */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-5 font-serif text-sm leading-relaxed text-on-surface-variant/80 selection:bg-primary/20">
-            <div className="max-w-prose mx-auto space-y-4">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-5 font-serif text-sm leading-relaxed text-on-surface-variant/80 selection:bg-primary/20 relative">
+            <AnimatePresence>
+              {isRefining && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-10 bg-surface-container-low/80 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center space-y-4"
+                >
+                  <div className="relative">
+                    <Sparkles className="w-10 h-10 text-primary animate-pulse" />
+                    <motion.div 
+                      className="absolute -inset-2 border border-primary/20 rounded-full"
+                      animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Echo Processing</h4>
+                    <p className="text-[9px] text-on-surface-variant font-medium italic opacity-60">Architecting Sovereign Prose...</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            <div className={`max-w-prose mx-auto space-y-4 transition-all duration-700 ${isRefining ? 'blur-[1px] opacity-40 grayscale' : ''}`}>
               {displayLines.map((line, idx) => (
                 <p key={idx} className="relative group">
                   {line || '\u00A0'}

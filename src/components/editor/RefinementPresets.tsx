@@ -22,6 +22,8 @@ import { ScopeModifiers } from './refinement/ScopeModifiers';
 import { EngineParameters } from './refinement/EngineParameters';
 import { SuggestionLedger } from './refinement/SuggestionLedger';
 import { StreamingThoughtsDisplay } from './refinement/StreamingThoughtsDisplay';
+import { useSpectralStore } from '../../stores/useSpectralStore';
+import { Target, Activity } from 'lucide-react';
 
 export const RefinementPresets: React.FC<RefinementPresetsProps> = React.memo((props) => {
     const {
@@ -29,6 +31,9 @@ export const RefinementPresets: React.FC<RefinementPresetsProps> = React.memo((p
         loreEntries = [], voiceProfiles = [], authorVoices = [], voiceDNAs = [], voiceSuites = [],
         preFetchedContext
     } = props;
+
+    // Spectral Store
+    const { suggestions: spectralSuggestions, isSpectralHUDEnabled, setHUDEnabled } = useSpectralStore();
 
     // UI Store (Volatile)
     const customFocus = useUIStore(state => state.customDirectives);
@@ -235,6 +240,53 @@ export const RefinementPresets: React.FC<RefinementPresetsProps> = React.memo((p
                           setIsSurgicalMode={setIsSurgicalMode}
                           hasSelection={hasSelection}
                         />
+
+                        {/* Spectral Focus Suggestions */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between px-1">
+                                <div className="flex items-center gap-2">
+                                    <Target className="w-3.5 h-3.5 text-amber-500" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-on-surface">Spectral Suggestions</span>
+                                </div>
+                                <button 
+                                    onClick={() => setHUDEnabled(!isSpectralHUDEnabled)}
+                                    className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-tighter transition-all ${
+                                        isSpectralHUDEnabled ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-white/5 text-on-surface-variant/40 border border-white/5'
+                                    }`}
+                                >
+                                    {isSpectralHUDEnabled ? 'HUD ON' : 'HUD OFF'}
+                                </button>
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-2">
+                                {spectralSuggestions.length > 0 ? (
+                                    spectralSuggestions.map((suggestion, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                const fa = focusAreaOptions.find(o => o.title === suggestion || o.id === suggestion.toLowerCase().replace(/\s+/g, '-'));
+                                                if (fa) {
+                                                    setFocusAreas([...new Set([...focusAreas, fa.id])]);
+                                                    showToast(`Applied Focus: ${fa.title}`);
+                                                } else {
+                                                    appendCustomDirective(`Focus on: ${suggestion}`);
+                                                }
+                                            }}
+                                            className="px-3 py-1.5 bg-surface-container-highest/30 border border-outline-variant/10 rounded-lg flex items-center gap-2 hover:bg-surface-container-highest/60 transition-all group"
+                                        >
+                                            <Activity className="w-3 h-3 text-amber-500/60 group-hover:text-amber-500 transition-colors" />
+                                            <span className="text-[9px] font-bold text-on-surface-variant group-hover:text-amber-500 transition-colors uppercase tracking-tight">{suggestion}</span>
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="w-full text-center py-4 border-2 border-dashed border-outline-variant/10 rounded-xl">
+                                        <p className="text-[8px] font-bold text-on-surface-variant/20 uppercase tracking-widest">
+                                            {isSpectralHUDEnabled ? 'No distinct spectra detected in current draft.' : 'Enable Spectral HUD to view suggestions.'}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
                         <SovereignPresets 
                             onSelect={handlePresetSelect} 
@@ -462,8 +514,6 @@ export const RefinementPresets: React.FC<RefinementPresetsProps> = React.memo((p
               isRefining={isRefining}
               streamingThoughts={streamingThoughts}
               streamingText={streamingText}
-              isThinkingExpanded={isThinkingExpanded}
-              setIsThinkingExpanded={setIsThinkingExpanded}
             />
         </div>
     );

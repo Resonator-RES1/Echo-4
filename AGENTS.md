@@ -23,3 +23,8 @@ To prevent build errors and configuration drift, all agents must adhere to the f
    - All refactoring must be performed in atomic, verified steps.
    - No component prop may be removed without first verifying all parent usages.
    - Run `lint_applet` between atomic refactoring steps to catch drift early.
+
+6. **Sovereign Arch Efficiency**:
+   - Prefer consolidated engine nodes (e.g., AlignmentNexus) over waterfall sequential nodes.
+   - Always honor user-defined model overrides (`refinementModelOverride`, `reportModelOverride`) in `ConfigStore`.
+   - Minimize API context by using `ContextEngine` triaging before any node execution.

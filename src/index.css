@@ -200,6 +200,16 @@
   .force-line-height {
     line-height: 1.7 !important;
   }
+
+  /* Spectral HUD Highlight Styles */
+  .spectral-focus {
+    @apply transition-all duration-300;
+  }
+  .spectral-focus[data-category="DIALOGUE"] { @apply bg-sky-500/10 border-b border-sky-500/30; }
+  .spectral-focus[data-category="SENSORY"] { @apply bg-emerald-500/10 border-b border-emerald-500/30; }
+  .spectral-focus[data-category="INTERNAL"] { @apply bg-purple-500/10 border-b border-purple-500/30; }
+  .spectral-focus[data-category="SLUDGE"] { @apply bg-red-500/20 border-b border-red-500 cursor-help; }
+  .spectral-focus[data-category="TENSILE"] { @apply bg-amber-500/10 border-b border-amber-500/30; }
 }
 
 .material-symbols-outlined {

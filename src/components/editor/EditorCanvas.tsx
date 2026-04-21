@@ -60,9 +60,7 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = React.memo(({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const effectiveFontSize = displayPrefs.dynamicFontScaling 
-    ? Math.max(14, Math.min(24, Math.round(windowWidth / 60))) 
-    : displayPrefs.fontSize;
+  const effectiveFontSize = displayPrefs.fontSize;
 
   const handleEditorChange = useCallback((markdown: string) => {
     dispatchDraft({ type: 'SET', payload: markdown });
@@ -117,18 +115,9 @@ export const EditorCanvas: React.FC<EditorCanvasProps> = React.memo(({
                   <input 
                     type="range" min="14" max="24" step="1"
                     value={effectiveFontSize}
-                    onChange={(e) => setDisplayPrefs({ ...displayPrefs, fontSize: parseInt(e.target.value), dynamicFontScaling: false })}
+                    onChange={(e) => setDisplayPrefs({ ...displayPrefs, fontSize: parseInt(e.target.value) })}
                     className="w-full accent-primary h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer"
                   />
-                  <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={displayPrefs.dynamicFontScaling || false}
-                      onChange={(e) => setDisplayPrefs({ ...displayPrefs, dynamicFontScaling: e.target.checked })}
-                      className="accent-primary"
-                    />
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/60">Auto-Scale</span>
-                  </label>
                 </div>
 
                 <div className="flex flex-col gap-1 w-48">

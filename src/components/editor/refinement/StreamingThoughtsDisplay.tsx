@@ -1,87 +1,109 @@
-import React, { useEffect, useRef } from 'react';
-import { Terminal } from 'lucide-react';
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ReportThinkingFlow } from '../../flowrail/ReportThinkingFlow';
+import { Zap, Activity, Fingerprint, Sparkles } from 'lucide-react';
 
 interface StreamingThoughtsDisplayProps {
   isRefining: boolean;
-  streamingThoughts: string;
-  streamingText: string;
-  isThinkingExpanded: boolean;
-  setIsThinkingExpanded: (expanded: boolean) => void;
+  streamingThoughts?: string;
+  streamingText?: string;
 }
 
 export const StreamingThoughtsDisplay: React.FC<StreamingThoughtsDisplayProps> = ({
   isRefining,
-  streamingThoughts,
-  streamingText,
-  isThinkingExpanded,
-  setIsThinkingExpanded
+  streamingThoughts = '',
 }) => {
-  const thoughtsContainerRef = useRef<HTMLDivElement>(null);
+  // Extract high-quality milestones from the thought stream
+  const milestones = useMemo(() => {
+    if (!streamingThoughts) return ['Initializing Sovereign Engine...'];
+    
+    const possibleMilestones = [
+      { trigger: 'initialize', label: 'Contextualizing Draft Environment...' },
+      { trigger: 'foundation', label: 'World & Narrative Alignment Pass...' },
+      { trigger: 'resolution', label: 'Profile Identity Reconstruction...' },
+      { trigger: 'cpi', label: 'Resolving Interaction Physics...' },
+      { trigger: 'intent', label: 'Establishing Authorial Hierarchy...' },
+      { trigger: 'nit', label: 'Calculating Narrative Instability...' },
+      { trigger: 'express', label: 'Allocating Imperfection Budget...' },
+      { trigger: 'render', label: 'Rendering Final Sovereignty...' },
+      { trigger: 'audit', label: 'Performing Deterministic Audit...' },
+      { trigger: 'healing', label: 'Repairing Linguistic Drift...' },
+      { trigger: 'voice', label: 'Synchronizing Voice DNA...' },
+      { trigger: 'lore', label: 'Consulting Lore Anchors...' }
+    ];
 
-  // Auto-scroll thoughts container
-  useEffect(() => {
-    if (thoughtsContainerRef.current) {
-      thoughtsContainerRef.current.scrollTop = thoughtsContainerRef.current.scrollHeight;
-    }
-  }, [streamingThoughts, streamingText]);
+    const found = possibleMilestones
+      .filter(m => streamingThoughts.toLowerCase().includes(m.trigger))
+      .map(m => m.label);
+
+    // Always show at least the current specific progress or the default
+    return found.length > 0 ? found.slice(-2) : ['Projecting Linguistic Mirror...'];
+  }, [streamingThoughts]);
 
   return (
     <AnimatePresence>
-      {isRefining && (streamingThoughts || streamingText) && (
+      {isRefining && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className="mt-6 p-4 bg-surface-container-highest/40 backdrop-blur-xl border border-primary/20 rounded-xl space-y-4 shadow-2xl"
+          exit={{ opacity: 0, scale: 0.98 }}
+          className="mt-4 p-5 bg-surface-container-high/60 backdrop-blur-2xl border border-primary/20 rounded-2xl shadow-2xl overflow-hidden relative"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-wider text-primary">Cynical Mirror: Internal Reasoning</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 mr-2">
-                <div className="w-1 h-1 bg-primary/20 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                <div className="w-1 h-1 bg-primary/20 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                <div className="w-1 h-1 bg-primary/20 rounded-full animate-bounce" />
-              </div>
-              <button 
-                onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
-                className="text-[9px] font-black uppercase tracking-widest text-primary/60 hover:text-primary transition-colors px-2 py-1 rounded-md bg-white/5 hover:bg-white/10"
-              >
-                {isThinkingExpanded ? 'Collapse' : 'Expand'}
-              </button>
-            </div>
-          </div>
+          {/* Animated Background Pulse */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 animate-pulse" />
           
-          <div 
-            ref={thoughtsContainerRef}
-            className={`overflow-y-auto custom-scrollbar space-y-4 transition-all duration-700 ease-in-out ${isThinkingExpanded ? 'max-h-[80vh]' : 'max-h-48'}`}
-          >
-            {streamingThoughts && (
-              <div className="pr-2">
-                <ReportThinkingFlow thinking={streamingThoughts} />
+          <div className="relative flex items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full border-2 border-primary/20 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-primary animate-spin-slow" />
+                </div>
+                <motion.div 
+                  className="absolute -inset-1 rounded-full border border-primary/40"
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0, 0.3] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
               </div>
-            )}
-            
-            {streamingText && (
-              <div className="space-y-2 mt-4 pt-4 border-t border-white/5">
+              
+              <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Terminal className="w-3 h-3 text-primary/40" />
-                  <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/40">Raw Refinement Stream</span>
+                   <Activity className="w-3 h-3 text-secondary animate-pulse" />
+                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Refinement in Progress</span>
                 </div>
-                <div className="text-[9px] font-mono text-primary/60 break-all opacity-50 line-clamp-3">
-                  {streamingText}
+                <div className="h-4 overflow-hidden">
+                  <AnimatePresence mode="wait">
+                    <motion.p 
+                      key={milestones[milestones.length - 1]}
+                      initial={{ y: 10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: -10, opacity: 0 }}
+                      className="text-[11px] font-bold text-on-surface-variant italic"
+                    >
+                      {milestones[milestones.length - 1]}
+                    </motion.p>
+                  </AnimatePresence>
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="flex items-center gap-6 pr-2">
+              <div className="flex flex-col items-center">
+                <Fingerprint className="w-4 h-4 text-primary/40" />
+                <span className="text-[7px] font-black uppercase tracking-widest text-on-surface-variant/30 mt-1">Identity</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <Zap className="w-4 h-4 text-secondary/40" />
+                <span className="text-[7px] font-black uppercase tracking-widest text-on-surface-variant/30 mt-1">Tension</span>
+              </div>
+            </div>
           </div>
-          
-          <div className="pt-2 flex items-center justify-between border-t border-white/5">
-            <span className="text-[8px] font-black uppercase tracking-widest text-on-surface-variant/30">Audit in Progress</span>
-            <span className="text-[8px] font-black uppercase tracking-widest text-primary/40 animate-pulse">Analyzing Voice & Lore...</span>
+
+          <div className="mt-4 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+             <motion.div 
+               className="h-full bg-primary shadow-[0_0_8px_rgba(var(--color-primary),0.5)]"
+               initial={{ width: "0%" }}
+               animate={{ width: "100%" }}
+               transition={{ duration: 15, ease: "linear" }}
+             />
           </div>
         </motion.div>
       )}

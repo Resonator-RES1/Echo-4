@@ -18,6 +18,8 @@ import {
     ExpressionPlanningSchema,
     ExpressionOutputSchema 
 } from "../../schemas/refinementSchemas";
+import { AlignmentNexus } from "./AlignmentNexus";
+import { useConfigStore } from "../../stores/useConfigStore";
 import { callWithInstructor } from "./refine";
 import { INTENSITY_CONFIG } from "../../constants/polishDepth";
 import { ProfileResolutionEngine } from "./ProfileResolutionEngine";
@@ -150,9 +152,17 @@ async function initializeContextNode(state: typeof RefinementState.State) {
         });
     }).map(v => v.id) || [];
 
-    // --- STAGE 1: AI SEMANTIC AUDIT (FLASH LITE) ---
-    // AI confirms the local detection and classifies narrative density
-    const preFlight = await ContextEngine.analyzeContext(draft, discoverableLore, discoverableVoices, options.scope || 'scene', memoryAxioms);
+    // --- STAGE 1 & 2: ALIGNMENT NEXUS (FLASH LITE) ---
+    // Combined Scoping and Strategy in a single inference pass
+    const { preFlight, alignment } = await AlignmentNexus.execute(
+        draft, 
+        discoverableLore, 
+        discoverableVoices, 
+        options, 
+        memoryAxioms
+    );
+
+    const { blueprint, mandate } = alignment;
     
     // Merge AI findings with deterministic hits (Deterministic > Semantic)
     const activeLoreIds = Array.from(new Set([...preFlight.semantic.loreIds, ...locallyDetectedLoreIds]));
@@ -161,13 +171,6 @@ async function initializeContextNode(state: typeof RefinementState.State) {
     // Update preFlight for downstream nodes
     preFlight.semantic.loreIds = activeLoreIds;
     preFlight.semantic.voiceIds = activeVoiceIds;
-
-    // --- STAGE 2: STRATEGIC ALIGNMENT (FLASH LITE) ---
-    // Narrow context for alignment pass to ensure strategy is targeted
-    const narrowedLoreForAlignment = activeLoreForSemantic.filter(l => activeLoreIds.includes(l.id) || l.isPinned);
-    const narrowedVoicesForAlignment = activeVoicesForSemantic.filter(v => activeVoiceIds.includes(v.id) || v.isPinned);
-
-    const { blueprint, mandate } = await AlignmentEngine.performAlignment(draft, narrowedLoreForAlignment, narrowedVoicesForAlignment, options, memoryAxioms);
 
     // --- STAGE 3: CONTEXT ASSEMBLY ---
     // Assemble the final curated context for the primary refinement instruction
@@ -212,15 +215,15 @@ async function initializeContextNode(state: typeof RefinementState.State) {
     const effectiveThinkingLevel = options.feedbackDepth === 'in-depth' ? 'high' : (DEPTH_CONFIG[options.feedbackDepth || 'balanced']?.thinkingLevel ?? 'default');
 
     const generationConfig: GenerationConfig = {
-        model: options.generationConfig?.model || 'gemini-3-flash-preview',
+        model: options.refinementModelOverride || store.refinementModelOverride || store.model || 'gemini-3-flash-preview',
         temperature: options.generationConfig?.temperature ?? adjustedTemperature,
         thinkingConfig: { thinkingLevel: options.generationConfig?.thinkingConfig?.thinkingLevel || effectiveThinkingLevel }
     };
 
     const reportGenerationConfig: GenerationConfig = {
-        model: options.reportGenerationConfig?.model || 'gemini-3.1-pro-preview',
+        model: options.reportModelOverride || store.reportModel || 'gemini-3-flash-preview',
         temperature: options.reportGenerationConfig?.temperature ?? 1.0,
-        thinkingConfig: { thinkingLevel: options.reportGenerationConfig?.thinkingConfig?.thinkingLevel || 'high' }
+        thinkingConfig: { thinkingLevel: options.reportGenerationConfig?.thinkingConfig?.thinkingLevel || store.reportThinkingLevel || 'high' }
     };
 
     const isPro = SovereignEngine.isProModel(generationConfig.model);
@@ -553,7 +556,7 @@ async function auditNode(state: typeof RefinementState.State) {
     
     // ADJUSTED THRESHOLD: Apply Lore Decay (Mask Erosion)
     const effectiveLoreThreshold = dynamicLoreThreshold * (state.decayScalar || 1.0);
-    const isLoreFailed = parsedAudit.audit && parsedAudit.audit.loreCompliance < effectiveLoreThreshold;
+    const isLoreFailed = parsedAudit.audit && (parsedAudit.audit.loreCompliance < (effectiveLoreThreshold ?? 5.0));
     
     const isVoiceFailed = parsedAudit.audit && (parsedAudit.audit.voiceFidelityScore < 7.0 || parsedAudit.audit.voiceAdherence < 7.0);
     
