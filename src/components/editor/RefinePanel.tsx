@@ -3,6 +3,7 @@ import { Sparkles, Loader2, Fingerprint } from 'lucide-react';
 import { RefinementPresets } from './RefinementPresets';
 import { RefinePanelProps } from '../../types';
 import { MirrorPreview } from './MirrorPreview';
+import { useRefinement } from '../../hooks/useRefinement';
 import { useLoreStore } from '../../stores/useLoreStore';
 import { useUIStore } from '../../stores/useUIStore';
 import { useManuscriptStore } from '../../stores/useManuscriptStore';
@@ -63,6 +64,8 @@ export const RefinePanel: React.FC<RefinePanelProps> = (props) => {
     }, [loreEntries, voiceProfiles, authorVoices, voiceSuites, voiceDNAs, currentScene, calendarConfig]);
 
     const isSurgical = !!(props.selection && props.selection.text.trim().length > 0);
+
+    const { streamingThoughts, streamingText } = useRefinement(props);
 
     return (
         <div className="flex flex-col flex-1 h-full min-h-0 animate-in fade-in duration-500 overflow-hidden pb-6">
@@ -126,6 +129,9 @@ export const RefinePanel: React.FC<RefinePanelProps> = (props) => {
                         selection={props.selection}
                         localWarnings={props.localWarnings}
                         isSurgical={isSurgical}
+                        streamingThoughts={streamingThoughts}
+                        streamingText={streamingText}
+                        isRefining={props.isRefining}
                     />
                 </div>
             </div>

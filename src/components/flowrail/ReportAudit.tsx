@@ -46,19 +46,20 @@ export const ReportAudit: React.FC<ReportAuditProps> = ({ audit, thinking }) => 
                         </div>
                         <div className="flex items-center gap-4">
                             {thinking && (
-                                <button 
+                                <div 
+                                    role="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setShowThinking(!showThinking);
                                     }}
-                                    className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border ${
+                                    className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border cursor-pointer ${
                                         showThinking 
                                         ? 'bg-primary text-on-primary border-primary shadow-lg shadow-primary/20' 
                                         : 'bg-white/5 text-primary border-primary/20 hover:bg-primary/10'
                                     }`}
                                 >
                                     {showThinking ? 'Hide Reasoning' : 'View Internal Reasoning'}
-                                </button>
+                                </div>
                             )}
                             <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-on-surface-variant/30 group-hover:text-primary transition-colors">
                                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

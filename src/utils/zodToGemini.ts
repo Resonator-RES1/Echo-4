@@ -17,10 +17,25 @@ export function zodToGeminiSchema(schema: z.ZodTypeAny): any {
       }
     }
 
+    const additionalProperties = (schema as any)._def.catchall;
+    let additionalPropertiesSchema: any = undefined;
+    if (additionalProperties && !(additionalProperties instanceof z.ZodNever)) {
+        additionalPropertiesSchema = zodToGeminiSchema(additionalProperties);
+    }
+
     return {
       type: Type.OBJECT,
       properties,
       required: required.length > 0 ? required : undefined,
+      additionalProperties: additionalPropertiesSchema,
+      description: schema.description,
+    };
+  }
+
+  if (schema instanceof z.ZodRecord) {
+    return {
+      type: Type.OBJECT,
+      additionalProperties: zodToGeminiSchema(schema._def.valueType),
       description: schema.description,
     };
   }
@@ -62,10 +77,30 @@ export function zodToGeminiSchema(schema: z.ZodTypeAny): any {
     };
   }
 
+  if (schema instanceof z.ZodUnion) {
+    // Gemini doesn't have a direct Union type in responseSchema that works like Zod's.
+    // We'll take the first option that represents a non-null type, 
+    // or fallback to string if it's too complex.
+    const nonOptionalOption = schema._def.options.find((o: any) => !(o instanceof z.ZodOptional || o instanceof z.ZodNullable));
+    if (nonOptionalOption) {
+      return zodToGeminiSchema(nonOptionalOption);
+    }
+    return { type: Type.STRING };
+  }
+
+  if (schema instanceof z.ZodLazy) {
+    return zodToGeminiSchema(schema._def.getter());
+  }
+
+  if (schema instanceof z.ZodAny) {
+    return { type: Type.STRING }; // Fallback to string for ANY
+  }
+
   if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {
     return zodToGeminiSchema(schema._def.innerType);
   }
 
   // Fallback
+  console.warn("zodToGeminiSchema: Unhandled Zod type, falling back to STRING", schema);
   return { type: Type.STRING };
 }

@@ -4,8 +4,8 @@ import { Zap, Scale, Search } from 'lucide-react';
 
 export const INTENSITY_CONFIG: Record<FeedbackDepth, IntensityProfile> = {
   casual: { maxHealingPasses: 0, auditComplexity: 'standard', temperatureBias: 0.8 },
-  balanced: { maxHealingPasses: 1, auditComplexity: 'ruthless', temperatureBias: 0.7 },
-  'in-depth': { maxHealingPasses: 3, auditComplexity: 'exhaustive', temperatureBias: 0.6 },
+  balanced: { maxHealingPasses: 2, auditComplexity: 'ruthless', temperatureBias: 0.7 },
+  'in-depth': { maxHealingPasses: 2, auditComplexity: 'exhaustive', temperatureBias: 0.6 },
 };
 
 export const DEPTH_CONFIG: Record<FeedbackDepth, { label: string; thinkingLevel: 'low' | 'default' | 'high'; icon: React.ReactNode; description: string }> = {

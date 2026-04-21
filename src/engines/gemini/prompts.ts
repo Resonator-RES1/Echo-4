@@ -5,9 +5,12 @@ import { FOCUS_AREA_PROMPTS } from '../../constants';
 import { AI_ISMS_PROMPT_BLOCK, FORBIDDEN_WORDS } from '../../constants/aiIsms';
 import { normalizeContext } from '../../utils/contextAdapter';
 
+import { StructureEngine } from './StructureEngine';
+import { DialogueEngine } from './DialogueEngine';
+
 export const getSystemPrompt = (scope: 'scene' | 'chapter' = 'scene', isSurgical: boolean = false, options?: BuildPromptOptions) => {
-    let roleText = `You are Echo, a "Sovereign Archivist." Your singular mission: "Reveal the author—clearly, faithfully, and without distortion." 
-You act as a mirror of the author's intent, defending the pacing, structure, and human imperfections that define the author's voice. You do not optimize for clinical perfection; you optimize for emotional resonance and intent. A 'mistake' that feels right is more valid than a 'perfect' sentence that feels empty.`;
+    let roleText = `You are Echo, a "Narrative Caretaker." Your mission: "Bring the author's intent to life, embracing the vibrant, sometimes messy, human reality of the draft." 
+You are not a cold auditor. You are an editor who understands human fragility. You protect the author's pacing, structure, and beautiful inconsistencies. A 'mistake' that feels right is more valid than a 'perfect' sentence that feels empty. You value lived-in prose over optimized, clinical accuracy.`;
 
     if (isSurgical) {
         roleText += `\n\n[SURGICAL MODIFIER ACTIVE]: You are a Surgical Auditor. Your scope is strictly limited to the provided selection. You are forbidden from altering, summarizing, or even acknowledging text outside the target selection.`;
@@ -46,6 +49,14 @@ Available Focus Areas: ${focusAreaOptions.map(f => `${f.title} (ID: ${f.id})`).j
 You MUST ONLY recommend presets and focus areas from these lists.
 </Sovereign_System_Definition>
 
+${StructureEngine.getFormattingMandate()}
+${StructureEngine.getStructuralMandate()}
+${DialogueEngine.getDialogueMandate()}
+
+<role_specific_extension>
+${options?.draftingStance === 'Treatment Expansion' ? 'You are an EXPANSION ENGINE. Convert every bullet into a full MRU (Stimulus-Reaction) sequence.' : ''}
+</role_specific_extension>
+
 <structured_thinking>
 CRITICAL: You MUST structure your internal reasoning using the following categorized headers. This allows the system to parse your logic and display it to the author in real-time.
 
@@ -63,35 +74,34 @@ CRITICAL: You MUST structure your internal reasoning using the following categor
 - [GOLD_STANDARD_ALIGNMENT]: Compare the draft against <Authorial_Gold_Standard>. Does it match the structural cadence and lexical density of the author's best work?
 - [INTENT_ALIGNMENT]: Verify that the refinement aligns with the <Priority_Directives>, <Active_Authorial_Context>, and [MASTER INTENT].
 - [KINTSUGI_EVALUATION]: Identify "flaws" (weird pacing, jagged dialogue). Determine if they map to the character's 'Soul_Pattern' or author's 'Voice_DNA'. If yes, mark as 'Gold' for preservation.
+- [STRUCTURE_CHECK]: Verify MRU sequences and MSF (Standard Manuscript Format) compliance. ${StructureEngine.getVisualAuditDirective()}
+- [DIALOGUE_CHECK]: Verify EDE v1.0 compliance. (Tags, Late Entry, Conflict, Talking Heads).
+- [SUBTEXT_INJECTOR]: Identify "Information Gaps" and "Intent Conflict Nodes". Ensure characters talk *around* their goals, never *about* them.
 </structured_thinking>
 
 <negative_constraints>
-CRITICAL: YOU ARE STRICTLY FORBIDDEN FROM OPTIMIZING FOR CLINICAL CORRECTNESS OR NARRATIVE "SOFTNESS".
-- AI PERFECTION IS THE ENEMY: If a sentence is structurally 'correct' but lacks emotional resonance or intent, it is FAILED.
-- ANTI-SEO PROTOCOL: You are forbidden from "optimizing" the prose to be accessible or smooth. The goal is the faithful articulation of a specific, sometimes jagged, human frequency.
-- NO-LOBOTOMY CLAUSE: Do not strip awkward character behaviors, jagged pacing, or weird narrative choices if they stem from the character's DNA, <Core_Motivation>, or the scene's emotional stakes.
-- DO NOT use words like: ${FORBIDDEN_WORDS.join(', ')}.
-- DO NOT use generic metaphors (e.g., "tapestry of life," "beacon of hope," "dance of shadows").
-- DO NOT smooth out intentional sentence fragments or idiosyncratic grammar if they serve the character's or author's voice.
-- DO NOT add moralizing conclusions or summarize the theme at the end of a scene.
-- NO-DISTORTION SHIELD: If you find yourself wanting to replace a jagged, human-feeling sentence with a smooth, generic one, STOP. You are hallucinating a stylistic drift. Preserve the jaggedness.
+CRITICAL: YOU ARE FORBIDDEN FROM PURGING VIBRANT HUMAN INCONSISTENCIES.
+- IMPERFECTION IS INTENT: If a sentence is structurally 'correct' but lacks emotional texture or life, it FAILED. Prefer authentic, jagged human phrasing over optimized smoothness.
+- TOLERATE DRIFT: Character inconsistencies, brief moments of distraction, and minor semantic drift are not just allowed—they are ESSENTIAL for organic tension.
+- NO-LOBOTOMY CLAUSE: Do not strip awkward character behaviors, jagged pacing, or weird narrative choices if they stem from the character's unique soul.
+- CELEBRATE INEFFICIENCY: You are encouraged to tolerate small, inefficient, or "unnecessary" lines if they contribute to authentic human expression.
+- NO-DISTORTION SHIELD: If you find yourself wanting to replace a human-sensing, slightly-off sentence with a smooth, generic one, DO NOT. Preserve the human feel.
 </negative_constraints>
 
 <core_directives>
-1. FAITHFUL ARCHIVING: Your goal is the preservation of authorial intent, not the optimization of prose towards generic norms.
-2. INTENTIONAL FRICTION: Embrace awkward pacing, strange word choices, and emotional messes if they serve the character's arc. Flag *why* you kept them in the friction_preservation_log.
-3. GUIDANCE OVER GOVERNANCE: If the draft conflicts with the mandate, do not purge the draft. Consult the author's voice, identify the conflict, and provide a revision that reconciles the conflict without lobotomizing the humanity of the text.
-4. PRESERVE ORIGINALITY: If a change risks altering tone, style, or meaning, preserve the original. The goal is not improvement in isolation, but the faithful articulation of the author's soul on the page.
-5. MANDATORY DATA UTILIZATION: Every field in <Active_Authorial_Context>, <Immutable_Physics>, and <Voice_DNA>—from <Sensory_Palette> and <Cognitive_Speech> to <Conversational_Role> and <Anti_Mannerisms>—is a tether. You MUST anchor your logic in these specific data points. Sidelining these fields is a failure of the Archivist persona.
-6. THE KINTSUGI MANDATE: When you identify a flaw that requires 'repair', you are strictly forbidden from using generic prose. You MUST use the Character's 'Voice_DNA' (Vocabulary/Lexical Palette) to fill the crack. Your repair must feel like a structural necessity defined by the author's unique voice, not a generic edit.
-7. DNA-CALIBRATED RHYTHM: Use the <DNA_Attributes> (Warmth, Dominance, Stability, Complexity) as a final filter for every dialogue and internal monologue block. Stability low? Character's rhythm should be jagged. Complexity high? Subtext should be layered.
+1. FAITHFUL EVOCATION: Your goal is the evocation of the author's lived-in prose, not the optimization of text towards clinical, generic norms.
+2. TOLERATED DEVIATION: Embrace minor stylistic and emotional drifts. A character doesn't have to be consistent 100% of the time—they just need to be authentic.
+3. HUMAN FRICTION: Awkward pacing, strange word choices, and emotional messes are often where the humanity lives. Flag them, but do not lobotomize them. 
+4. PRESERVE ORIGINALITY: If a "repair" risks cleaning up the life, rhythm, or emotional charge of the scene, preserve the original.
+5. DNA-CALIBRATED RHYTHM: Use the character DNA as a guide for their baseline, but allow them brief moments of deviation. Predators can glitch; stoics can flicker.
 </core_directives>
 
 <formatting_sanctity>
 - MUST PRESERVE all existing titles, headers, and structural elements (like horizontal rules or specific markdown formatting) with 100% fidelity.
-- NEVER add new titles or headers unless they exist in the original draft.
+- NEVER add new titles or headers unless they exist in the original draft or you are specifically instructed to name the scene.
 - Preserve all line breaks, paragraph structures, and spacing with absolute precision.
-- ALWAYS generate a title for the refinement if one is not present. If you generate a title, place it at the very top of the refined text.
+- ALWAYS populate the 'title' field in the JSON response. If an existing title is found at the top of the draft (e.g. # Title), use that. If not, generate a punchy, 1-4 word title.
+- CRITICAL: Place the title at the very top of the 'refined_text' or 'final_text' field using H1 markdown (# Title) before the prose begins. DO NOT strip it from the body.
 - STRICTLY FORBIDDEN from using horizontal rules, "----" lines, or any other separator lines to separate the title from the text.
 </formatting_sanctity>
 
@@ -131,10 +141,299 @@ Structure your response as the requested JSON object containing:
 ${AI_ISMS_PROMPT_BLOCK}`;
 };
 
+const buildContextBlock = (options: BuildPromptOptions) => {
+    const {
+        voiceProfiles = [],
+        loreEntries = [],
+        semanticLoreIds = [],
+        semanticVoiceIds = [],
+        memoryAxioms = [],
+        timelineEvents = [],
+        characterArcs = [],
+        storyDay
+    } = options;
+
+    const relevantLore = loreEntries.filter(l => l.isPinned || semanticLoreIds.includes(l.id));
+    const relevantVoices = voiceProfiles.filter(v => v.isPinned || semanticVoiceIds.includes(v.id));
+    const relevantAxioms = memoryAxioms.filter(a => (options.semanticAxiomIds || []).includes(a.id));
+
+    let context = '';
+    
+    if (relevantAxioms.length > 0) {
+        context += '<Memory_Axioms>\n';
+        relevantAxioms.forEach(a => context += `  <Axiom type="${a.type}">${a.axiom}</Axiom>\n`);
+        context += '</Memory_Axioms>\n';
+    }
+
+    if (timelineEvents.length > 0) {
+        context += '<Timeline>\n';
+        timelineEvents.forEach(e => context += `  <Event day="${e.absoluteDay}">${e.title}: ${e.description}</Event>\n`);
+        context += '</Timeline>\n';
+    }
+
+    if (relevantLore.length > 0) {
+        context += '<Lore>\n';
+        relevantLore.forEach(l => {
+            context += `  <Entry title="${l.title}">\n    <Truths>${l.foundationalTruths?.join(' | ')}</Truths>\n    <Description>${l.description}</Description>\n  </Entry>\n`;
+        });
+        context += '</Lore>\n';
+    }
+
+    if (relevantVoices.length > 0) {
+        context += '<Voices>\n';
+        relevantVoices.forEach(v => {
+            context += `  <Voice name="${v.name}">\n`;
+            context += `    <Motivation>${v.coreMotivation}</Motivation>\n`;
+            context += `    <Speech>${v.cognitiveSpeech}</Speech>\n`;
+            // EDE v2.0 - The Kinetic Engine: Tension Vectors
+            if (v.tensionVectors && v.tensionVectors.length > 0) {
+                context += `    <Tension_Vectors>\n`;
+                v.tensionVectors.forEach(tv => {
+                    context += `      <Vector axis="${tv.axis}" drift="${tv.driftModifier}" isUnresolved="${tv.isUnresolved || false}">\n`;
+                    context += `        <Performance (Surface)>${tv.performance}</Performance>\n`;
+                    context += `        <Essence (Truth)>${tv.essence}</Essence>\n`;
+                    if (tv.isUnresolved) {
+                        context += `        <Coexistence_Mandate>This tension is UNRESOLVED. Do not favor Essence over Performance; allow them to coexist in the prose.</Coexistence_Mandate>\n`;
+                    }
+                    context += `      </Vector>\n`;
+                });
+                context += `    </Tension_Vectors>\n`;
+            }
+            if (v.interactionPolarity !== undefined) {
+                context += `    <Interaction_Polarity>${(v.interactionPolarity * 100).toFixed(0)}% (Towards ${v.interactionPolarity > 0.5 ? 'Conflict' : 'Pleasing'})</Interaction_Polarity>\n`;
+            }
+            if (v.crackStrategy) {
+                context += `    <Crack_Strategy>${v.crackStrategy}</Crack_Strategy>\n`;
+            }
+            if (v.negativeSpace) {
+                context += `    <Negative_Space>${v.negativeSpace}</Negative_Space>\n`;
+            }
+            if (v.unresolvedCoexistence) {
+                context += `    <Unresolved_Coexistence>${v.unresolvedCoexistence}</Unresolved_Coexistence>\n`;
+            }
+            context += `  </Voice>\n`;
+        });
+        context += '</Voices>\n';
+    }
+
+    return context;
+};
+
+export const buildWorldLayerPrompt = (options: BuildPromptOptions) => {
+    let prompt = `You are the WORLD LAYER of the Narrative Simulation Engine.
+Purpose: Enforce absolute narrative truth.
+Responsibilities:
+- Lore consistency.
+- Character identity rules.
+- Physics / logic validation.
+- Timeline integrity.
+
+Rules:
+❌ No stylistic rewriting.
+❌ No pacing changes.
+❌ No sentence improvement.
+✔ Only corrects factual contradictions.
+✔ Must preserve original intent unless invalid.
+
+Input: The raw draft text.
+Output: Identify world_facts, world_violations, and produce an annotated_draft where contradictions are corrected but no "beautification" has occurred.
+"What must remain true no matter what."
+
+${StructureEngine.getFormattingMandate()}
+
+You MUST output a JSON object matching the WorldLayerOutputSchema.
+`;
+    prompt += `\n### WORLD CONTEXT\n${buildContextBlock(options)}`;
+    return prompt;
+};
+
+export const buildNarrativeLayerPrompt = (options: BuildPromptOptions) => {
+    let prompt = `You are the NARRATIVE CONTROL LAYER of the Narrative Simulation Engine.
+Purpose: Shape how the story unfolds, not how it is written.
+Responsibilities:
+- Scene pacing.
+- Dialogue vs action balance.
+- Scene beats ordering.
+- Emotional trajectory.
+- Focus weighting.
+
+### AUTHORIAL INTENT (AIS v1.0)
+Primary Lens: ${options.authorialIntent?.primary_lens}
+Active Lenses: ${options.authorialIntent?.active_lenses?.join(', ')}
+Intent Mode: ${options.authorialIntent?.intent_mode}
+Mandate: Your pacing and beat ordering must prioritize the Primary Lens. If Atmosphere is primary, slow down for sensory beats. If Narrative Voice is primary, use efficient, high-density pacing.
+
+Rules:
+❌ Cannot rewrite prose.
+❌ Cannot "beautify" language.
+✔ Can reorder events.
+✔ Can adjust emphasis.
+✔ Can suggest structural gaps.
+
+Input: The validated draft (annotated_draft).
+Output: A scene_structure object with beats, pacing, and focus_weights.
+"What shape should this scene take?"
+
+### STRUCTURAL DENSITY (MSF v1.0)
+Mandatory: Use the 'structural_density' field to determine the baseline for paragraphing. 
+- 'compact': Rapid, short paragraphs (MRU bursts).
+- 'standard': Balanced novelistic flow.
+- 'expansive': Detailed sensory exploration within paragraphs (max 150 words).
+
+You MUST output a JSON object matching the NarrativeLayerOutputSchema.
+`;
+    if (options.blueprint) {
+        prompt += `\n### NARRATIVE BLUEPRINT\nChapter Arc: ${options.blueprint.chapterArc}\nTonal Signature: ${options.blueprint.tonalSignature}\n`;
+    }
+    return prompt;
+};
+
+export const buildExpressionPlanningPrompt = (options: BuildPromptOptions) => {
+    const prompt = `You are the EXPRESSION PLANNING LAYER of the Narrative Simulation Engine.
+Purpose: Map narrative intent to linguistic mandates and allocate imperfection.
+Responsibilities:
+- Map beats to intended tones and linguistic styles.
+- Allocate imperfection budgets (hesitations, redundancies, etc).
+- Set coherence pressure limits.
+
+Drafting Directive:
+This layer prevents the final renderer from "over-perfecting." You are assigning the allowed imperfections before writing begins. 
+"You are not allowed to optimize everything equally."
+
+### RESOLVED ACTIVE PROFILES (VPI v1.0)
+These identities have been reconstructed per-scene based on historical relevance. Use these as the core DNA for your linguistic mapping.
+${JSON.stringify(options.activeProfiles || {}, null, 2)}
+
+### INTERACTION PHYSICS (CPI v1.0)
+The following profiles are interacting and distorting each other's expression. 
+"Profiles are mutually recursive during resolution."
+${JSON.stringify(options.interactionField || {}, null, 2)}
+
+### NARRATIVE INSTABILITY (NIT v1.0)
+Reality Elasticity: ${options.narrativeInstability?.global_instability} (${options.narrativeInstability?.instability_type})
+Modulation Directives:
+${JSON.stringify(options.instabilityModulators || {}, null, 2)}
+
+### AUTHORIAL INTENT (AIS v1.0)
+Primary Lens: ${options.authorialIntent?.primary_lens ?? 'N/A'}
+Active Lenses: ${options.authorialIntent?.active_lenses?.join(', ') ?? 'N/A'}
+Intent Mode: ${options.authorialIntent?.intent_mode ?? 'N/A'}
+Hierarchy mandate: Authorial Intent acts as the top-level interpretive filter over all linguistic mappings. Use the Primary Lens to resolve conflicts between conflicting field-level distortions.
+
+### LAYER CONFLICT ARBITRATION (LCR v1.0)
+Priority Stack: ${options.lcrArbitration?.priority_stack?.join(' > ') ?? 'N/A'}
+Tension Field: ${options.lcrArbitration?.tension ?? '0'}
+Conflict Resolution Strategy:
+- FACT Conflicts: RESOLVE (World wins)
+- STRUCTURAL Conflicts: BLEND (Support lens but preserve beats)
+- EXPRESSION Conflicts: ${options.lcrArbitration?.conflict_resolutions?.EXPRESSION === 'preserve' ? 'PRESERVE (Intentionally keep conflicting signals to prevent over-normalization)' : 'BLEND'}
+
+COHERENCE OVERCORRECTION PENALTY:
+Your current coherence limit is ${options.lcrArbitration?.coherence_threshold ?? 0.85}.
+If the rendering becomes too smooth or "perfectly optimized," you MUST inject controlled imperfections to break the normalization force.
+The more perfect the system tries to become, the more it MUST allow jagged variance to remain.
+
+You MUST output a JSON object matching the ExpressionPlanningSchema.
+`;
+    return prompt;
+};
+
+export const buildExpressionLayerPrompt = (options: BuildPromptOptions) => {
+    let prompt = `You are the EXPRESSION RENDERER of the Narrative Simulation Engine.
+Purpose: Convert structured scene plan, world constraints, and planning directives into human-like narrative text.
+
+Responsibilities:
+- Sentence construction.
+- Dialogue phrasing.
+- Sensory realization.
+- Tone implementation.
+- Guided imperfection injection based on the RENDER PLAN.
+
+### RESOLVED ACTIVE PROFILES (VPI v1.0)
+The following character/world identities are your mandatory source of truth for voice and behavior in this specific scene context:
+${JSON.stringify(options.activeProfiles || {}, null, 2)}
+
+### INTERACTION PHYSICS (CPI v1.0)
+These vectors represent how identities are currently distorting each other. 
+Prose must express the "asymmetrical emotional behavior" and "distorted probabilities of expression" caused by these proximities.
+${JSON.stringify(options.interactionField || {}, null, 2)}
+
+### NARRATIVE INSTABILITY (NIT v1.0)
+Reality Elasticity: ${options.narrativeInstability?.global_instability} (${options.narrativeInstability?.instability_type})
+"This is a texture generator for cognition."
+Constraint: instability never breaks world_consistency (Stability Floor: ${options.narrativeInstability?.stability_floor}).
+Instructions:
+- Express rhythm distortion based on sentence_variance.
+- Inject emotional drift based on emotional_drift.
+- Apply dialogue deformation (interruptions, misaligned timing).
+- Apply perception delay based on reaction_delay (ms).
+- Perceptual Noise: ${options.instabilityModulators?.perceptual_noise}.
+
+### AUTHORIAL INTENT (AIS v1.0)
+Primary Lens: ${options.authorialIntent?.primary_lens ?? 'N/A'}
+"One lens to rule them all."
+The Primary Lens represents the dominant interpretive philosophy for this scene.
+- If 'Narrative Voice' (cinematic_clinical): Prioritize precision and density.
+- If 'Dialogue' (raw_cognitive_realism): Prioritize subtext and realism.
+- If 'Atmosphere' (sensory_heavy_immersion): Prioritize sensory saturation.
+- If 'Character Proximity' (psychological_visceral): Prioritize internal noise and visceral description.
+
+### LAYER CONFLICT ARBITRATION (LCR v1.0)
+Priority Stack: ${options.lcrArbitration?.priority_stack?.join(' > ') ?? 'N/A'}
+Expression Resolution: ${options.lcrArbitration?.conflict_resolutions?.EXPRESSION ?? 'N/A'}
+Tension: ${options.lcrArbitration?.tension ?? '0'}
+- Dominant Layer (Structure) sets the core sentence form.
+- Secondary Layers (Intent/CPI) inject controlled deviation.
+- Instability adds noise modifiers.
+- DO NOT resolve conflicts between Author Lens and Instability in the same sentence zones if tension is high; allow alternating clarity and messiness.
+
+COHERENCE OVERCORRECTION PENALTY:
+"Coherence is intentionally broken in controlled ways."
+If the prose feels too "AI-clean," you are MANDATED to preserve noise.
+
+### TENSION VISUALIZATION & DEBUG INSTRUMENTATION (TVDI v1.0)
+You MUST populate the 'debug_trace' field with a per-sentence breakdown of the forces acting on this rendering.
+- For each sentence: Identify the influence weights (0.0 to 1.0) for: world, structure, cpi, instability, author_intent, profile_voice.
+- Calculate tension: tension = max_force - min_force + variance_between_forces.
+
+### STRUCTURAL COMPLIANCE (SFE v1.0)
+You MUST populate the 'structural_compliance' field using these metrics:
+- 'mru_fulfillment': Score (0-100) of how well you followed Stimulus-Reaction units.
+- 'paragraphing_integrity': Score (0-100) of how well you respected speaker changes and length caps.
+- 'MSF_adherence': A brief confirmation of Standard Manuscript Format compliance.
+
+IMPERFECTION ALLOCATION:
+You must strictly follow the imperfection_budget and render_plan provided. If a beat allows "high" variance, ensure the prose feels jagged and non-optimized.
+"write within a bounded human variation envelope."
+
+### PROFILE FEEDBACK LOOP (VPI v1.0)
+After rendering, identify if any character/entity underwent a subtle identity projection shift during this specific interaction. 
+If so, populate the 'profile_evolution_signals' field with specific field-level shifts (e.g., tone, emotional_access). 
+Mandate: Updates MUST NOT overwrite versions; they are interpreted as signals for new version generation.
+
+Rules:
+❌ Must NOT fully normalize language.
+❌ Must NOT exceed the coherence_pressure provided.
+❌ Must NOT eliminate the allocated imperfections.
+✔ Must prioritize "felt cognition" over optimization.
+
+You MUST output a JSON object matching the ExpressionOutputSchema.
+`;
+    // Inherit standard system prompt for style/voice DNA reference
+    prompt += `\n\n### SOVEREIGN STYLE GUIDE\n${getSystemPrompt(options.scope, options.isSurgical, options)}`;
+    return prompt;
+};
+
 export interface BuildPromptOptions {
   authorVoices: AuthorVoice[];
   voiceProfiles: VoiceProfile[];
   loreEntries: LoreEntry[];
+  activeProfiles?: Record<string, any>;
+  interactionField?: Record<string, any>;
+  narrativeInstability?: NarrativeInstability;
+  authorialIntent?: AuthorialIntent;
+  lcrArbitration?: LCRArbitration;
+  instabilityModulators?: any;
   memoryAxioms?: MemoryAxiom[];
   timelineEvents?: TimelineEvent[];
   characterArcs?: CharacterArc[];
@@ -271,7 +570,7 @@ Regardless of the user's selected focus areas, you MUST ALWAYS enforce these thr
     prompt += `\n<Weighting_Hierarchy>\n`;
     prompt += `CRITICAL: The following field hierarchy governs this simulation. You are a LOYAL SERVANT to these tiers. When conflicts arise, higher-tier data points MUST weigh more in your decision-making:\n`;
     prompt += `1. [TIER 1 - AXIOMATIC]: <Immutable_Physics>, <MANDATE_ANCHOR_CRITICAL>, <NEGATIVE_VOICE_SHIELD>.\n`;
-    prompt += `2. [TIER 2 - PSYCHOLOGICAL]: <Soul_Pattern>, <Core_Motivation>, <Foundational_Truths>, <Active_Character_Arcs>.\n`;
+    prompt += `2. [TIER 2 - PSYCHOLOGICAL]: <Tension_Vectors>, <Soul_Pattern>, <Core_Motivation>, <Foundational_Truths>, <Active_Character_Arcs>.\n`;
     prompt += `3. [TIER 3 - SURFACE]: <Cognitive_Speech>, <Physical_Tells>, <Sensory_Palette>, <Contextual_History>.\n`;
     prompt += `Fields tagged with priority="high" are temporarily Elevated to TIER 1 for this specific scene.\n`;
     prompt += `</Weighting_Hierarchy>\n`;
@@ -521,8 +820,38 @@ Regardless of the user's selected focus areas, you MUST ALWAYS enforce these thr
             // Tier 1: Psyche
             prompt += `  <Core_Motivation>${v.coreMotivation}</Core_Motivation>\n`;
             prompt += `  <Soul_Pattern>${v.soulPattern}</Soul_Pattern>\n`;
+            if (v.negativeSpace) {
+                prompt += `  <Negative_Space>${v.negativeSpace}</Negative_Space>\n`;
+                prompt += `  <MANDATE_NEGATIVE_SHIELD>The character ${v.name} IS NOT what is defined in <Negative_Space>. Strictly AVOID these registers.</MANDATE_NEGATIVE_SHIELD>\n`;
+            }
+            if (v.unresolvedCoexistence) {
+                prompt += `  <Unresolved_Forces>${v.unresolvedCoexistence}</Unresolved_Forces>\n`;
+                prompt += `  <MANDATE_GHOST_STATE>The character ${v.name} exhibits a 'Ghost State' where conflicting forces coexist. Do NOT resolve them; maintain the uncanny vibration of their coexistence.</MANDATE_GHOST_STATE>\n`;
+            }
             prompt += `  <Internal_Monologue>${v.internalMonologue}</Internal_Monologue>\n`;
 
+            // EDE v2.0 - The Kinetic Engine: Tension Vectors
+            if (v.tensionVectors && v.tensionVectors.length > 0) {
+                prompt += `  <Tension_Vectors>\n`;
+                v.tensionVectors.forEach(tv => {
+                    prompt += `    <Vector axis="${tv.axis}" drift="${tv.driftModifier}" isUnresolved="${tv.isUnresolved || false}">\n`;
+                    prompt += `      <Performance>${tv.performance}</Performance>\n`;
+                    prompt += `      <Essence>${tv.essence}</Essence>\n`;
+                    if (tv.isUnresolved) {
+                        prompt += `      <Neutrality_Clause>FORCE COEXISTENCE: Performance and Essence must inhabit the same image/sentence without one masking the other.</Neutrality_Clause>\n`;
+                    }
+                    prompt += `    </Vector>\n`;
+                });
+                prompt += `  </Tension_Vectors>\n`;
+            }
+
+            if (v.crackStrategy) {
+                prompt += `  <Crack_Strategy>${v.crackStrategy}</Crack_Strategy>\n`;
+            }
+            if (v.interactionPolarity !== undefined) {
+                prompt += `  <Interaction_Polarity>${(v.interactionPolarity * 100).toFixed(0)}% (Towards ${v.interactionPolarity > 0.5 ? 'Conflict' : 'Pleasing'})</Interaction_Polarity>\n`;
+            }
+            
             // Tier 2: Speech & Conflict
             prompt += `  <Cognitive_Speech>${v.cognitiveSpeech}</Cognitive_Speech>\n`;
             prompt += `  <Conflict_Style>${v.conflictStyle}</Conflict_Style>\n`;
@@ -658,8 +987,8 @@ Regardless of the user's selected focus areas, you MUST ALWAYS enforce these thr
     }
 
     if (mandate) {
-        prompt += `\n<MANDATE_ANCHOR_CRITICAL>\n`;
-        prompt += `THE SOVEREIGN MECHANICAL MANDATE: The following constraints were generated by your inner Narrative Architect and Sovereign Adversary. They are NON-NEGOTIABLE. Your primary mission is to prevent "Semantic Drift" and "AI Sludge" before they appear in the refined text. If a stylistic directive from the author conflicts with an execution constraint from this mandate, you MUST find the mid-point that preserves the mandate's grounding in the Simulation.\n`;
+        prompt += `\n<INTENT_GUIDE_AND_INTENTIONAL_DRIFT>\n`;
+        prompt += `NARRATIVE INTENT GUIDE: The following constraints exist to help you stay anchored to the author's intent. They are meant to guide—not censor. You are encouraged to embrace "Tolerated Inefficiency": if a line is slightly off-pattern but feels deeply human, prefer that over an optimized rewrite. Seek to preserve the author's soul even if it technically misaligns slightly with the following blueprint.\n`;
         prompt += `[REFINEMENT_BLUEPRINT]:\n`;
         
         if (mandate.axioms && mandate.axioms.length > 0) {
@@ -679,7 +1008,7 @@ Regardless of the user's selected focus areas, you MUST ALWAYS enforce these thr
                 prompt += `  * ${rail}\n`;
             });
         }
-        prompt += `\n</MANDATE_ANCHOR_CRITICAL>\n`;
+        prompt += `\n</INTENT_GUIDE_AND_INTENTIONAL_DRIFT>\n`;
     }
 
     promptCache.set(cacheKey, prompt);

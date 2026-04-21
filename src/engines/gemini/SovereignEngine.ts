@@ -53,7 +53,7 @@ export const SovereignEngine = {
 ### THE SOVEREIGN RIGOR (HARD CONSTRAINTS)
 1. **SENTENCE POLARITY**: Every sentence over 20 words must strictly be followed by a sentence of 5 words or fewer.
 2. **NOUN-ANCHOR LOCK**: Use ONLY concrete, physical nouns (e.g., rust, blood, dirt, metal, glass). Anchor every description in tangible reality.
-3. **LEXICAL ENTROPY**: Use the vocabulary of a 19th-century sailor or a cynical detective. Focus on the mechanics of action.
+3. **HUMAN FRICTION**: You are FORBIDDEN from over-optimizing. If a character stutters, wanders, or uses a slightly redundant phrase, PRESERVE it if it feels alive.
 4. **PHYSICS-FIRST**: Describe the weight of air, the smell of dust, or the temperature of skin before introducing character reactions.
 `;
     },
@@ -65,9 +65,9 @@ export const SovereignEngine = {
         return `
 ---
 **THE SHIELD MANDATE** (Final Override):
-Focus entirely on the **Physics of the Scene.**
-The character must act and sound like a bored person waiting for a train.
-Your singular objective is **Mechanical Precision.** Focus on the grit, the dirt, and the clockwork of the moment.
+Focus entirely on the **Breathed Reality of the Scene.**
+The character must act and sound like a person, not a narrative function.
+Your singular objective is **Faithful Evocation.** Focus on the grit, the dirt, and the beautiful inconsistencies of the moment.
 ---
 `;
     },
@@ -78,6 +78,31 @@ Your singular objective is **Mechanical Precision.** Focus on the grit, the dirt
     isProModel(model?: string): boolean {
         if (!model) return false;
         return model.includes('pro') || model.includes('ultra');
+    },
+
+    /**
+     * Is the model a "Flash" model (non-lite)?
+     */
+    isFlashModel(model?: string): boolean {
+        if (!model) return false;
+        return model.includes('flash') && !model.includes('lite');
+    },
+
+    /**
+     * Is the model a "Lite" model?
+     */
+    isLiteModel(model?: string): boolean {
+        if (!model) return false;
+        return model.includes('lite');
+    },
+
+    /**
+     * Is thinking supported for this model?
+     * (3.1+ models usually)
+     */
+    supportsThinking(model?: string): boolean {
+        if (!model) return false;
+        return model.includes('3.1') || model.includes('thinking');
     },
 
     /**

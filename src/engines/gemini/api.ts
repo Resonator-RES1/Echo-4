@@ -41,34 +41,39 @@ export async function callAiApi(payload: AiPayload, retryCount = 0): Promise<any
     const modelName = model || "gemini-3.1-flash-lite-preview";
 
     // Intelligence Model & Polish Depth Optimization
-    // Tie thinking level to the user's requested polish depth
+    // Tie thinking level to the user's requested polish depth and model capabilities
     let thinkingLevel = ThinkingLevel.LOW; // Default
-    
+    const isLite = modelName.includes('lite');
+    const supportsThinking = modelName.includes('3.1') || modelName.includes('thinking');
+
+    // MAPPING LOGIC (Sovereign Engine Directive)
     if (thinkingConfig?.thinkingLevel) {
         thinkingLevel = thinkingConfig.thinkingLevel === 'high' ? ThinkingLevel.HIGH : 
+                        thinkingConfig.thinkingLevel === 'medium' ? (ThinkingLevel as any).MEDIUM || ThinkingLevel.LOW :
                         thinkingConfig.thinkingLevel === 'low' ? ThinkingLevel.LOW : 
                         thinkingConfig.thinkingLevel === 'minimal' ? ThinkingLevel.MINIMAL :
-                        ThinkingLevel.LOW; // 'default' or fallback maps to LOW for stability
+                        ThinkingLevel.LOW;
     } else if (feedbackDepth === 'in-depth') {
-        thinkingLevel = ThinkingLevel.HIGH; 
+        // Only allow HIGH thinking if not a Lite model (Physics constraint)
+        thinkingLevel = isLite ? ThinkingLevel.LOW : ThinkingLevel.HIGH; 
     } else if (feedbackDepth === 'balanced') {
-        thinkingLevel = ThinkingLevel.LOW; // User wants this to be 'medium' (API 'low')
+        // Balanced on non-lite can use MEDIUM if supported, otherwise LOW
+        thinkingLevel = isLite ? ThinkingLevel.MINIMAL : (ThinkingLevel as any).MEDIUM || ThinkingLevel.LOW;
     } else {
         // 'casual' -> ThinkingLevel.MINIMAL
         thinkingLevel = ThinkingLevel.MINIMAL;
     }
 
-    const isThinkingModel = modelName.includes('3') || modelName.includes('thinking');
-
     const config: any = {
         systemInstruction,
-        temperature: (isThinkingModel && modelName.includes('3.1')) ? 1.0 : (temperature ?? 0.7), 
+        // MANDATE: When thinking is active on 3.1+, temperature MUST be 1.0 per Google specs
+        temperature: (supportsThinking && modelName.includes('3.1')) ? 1.0 : (temperature ?? 0.7), 
         responseMimeType: "application/json",
         responseSchema: responseSchema,
     };
 
     // Only inject thinkingConfig if the model is known to support it (3.x or explicit thinking models)
-    if (isThinkingModel) {
+    if (supportsThinking) {
         config.thinkingConfig = { thinkingLevel };
     }
 

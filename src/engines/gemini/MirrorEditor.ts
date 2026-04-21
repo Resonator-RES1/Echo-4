@@ -44,7 +44,7 @@ ${activeLore.map((l: any) => `[${l.title.toUpperCase()}]: ${l.description} | TRU
 </World_Anchor_Lore>
 
 <Voice_Anchor_DNA>
-${activeVoices.map((v: any) => `[${v.name.toUpperCase()}]: Pattern: ${v.soulPattern} | Motivation: ${v.coreMotivation} | Prohibited: ${v.antiMannerisms?.join(', ') || 'None'}`).join('\n')}
+${activeVoices.map((v: any) => `[${v.name.toUpperCase()}]: Pattern: ${v.soulPattern} | Motivation: ${v.coreMotivation} | Tensions: ${v.tensionVectors?.map((tv: any) => `${tv.axis}(Perf: ${tv.performance} vs Essence: ${tv.essence})`).join('; ') || 'None'}`).join('\n')}
 </Voice_Anchor_DNA>
 `;
 
@@ -57,6 +57,9 @@ NOTE: A deterministic parser has already scanned for technical sludge and prohib
 2. VOICE FIDELITY: Rate 0-10. Beyond individual words, does the character's motivation align with their DNA?
 3. LOGIC GAPS: Identify any causality breaks or emotional jumps.
 4. REFINEMENT REPORT: Detailed analysis of the prose quality and atmospheric resonance.
+5. STRUCTURAL COMPLIANCE: Analyze the paragraph density and MRU (Motivation-Reaction Unit) fulfillment. If the AI returned a single block of text or failed to break for a new speaker, explicitly flag this in 'conflicts'. Identify if the text adheres to Standard Manuscript Format length caps (max 150 words/para).
+6. DIALOGUE AUDIT (EDE v1.0): Scan for "On-the-nose" dialogue. If a character explains their emotion directly ("I am sad"), it is a LOGIC LEAK. Verify characters don't explain lore the other person already knows ("As you know, Bob"). Flag transactional "Hellos" at scene starts.
+7. TENSION AUDIT (EDE v2.0): Analyze the friction between character Performance vs Essence. If a character 'cracks' and speaks their truth directly, verify it is justified by high scene pressure/instability. Populate 'tension_audit' for each active voice.
 </TASK>`;
 
         const { parsed: parsedAudit, combinedThinking } = await callWithInstructor({

@@ -11,9 +11,11 @@ export const safeJsonParse = (jsonString: string) => {
              cleaned = cleaned.substring(firstBrace, lastBrace + 1);
         }
         try {
-            return JSON.parse(cleaned);
-        } catch (innerE) {
-            console.error("Failed to parse JSON even after cleaning:", innerE);
+            // Attempt 2: Clean trailing commas and common LLM malformations
+            const cleaned2 = cleaned.replace(/,\s*([}\]])/g, '$1');
+            return JSON.parse(cleaned2);
+        } catch (innerE2) {
+            console.error("Failed to parse JSON even after structural cleaning:", innerE2);
             return {};
         }
     }

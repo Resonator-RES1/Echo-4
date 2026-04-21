@@ -1,4 +1,5 @@
 import { Annotation, StateGraph, START, END } from "@langchain/langgraph";
+import { z } from "zod";
 import { RefineDraftOptions, GenerationConfig, NarrativeBlueprint, MechanicalMandate, NarrativeDensityMap } from "../../types";
 import { AlignmentEngine } from "./alignmentEngine";
 import { ContextEngine } from "./contextEngine";
@@ -10,13 +11,30 @@ import { TimelineEngine } from "../logic/TimelineEngine";
 import { resolveAllProfiles } from "../../utils/profileResolver";
 import { calculateAbsoluteDay } from "../../utils/calendar";
 import { zodToGeminiSchema } from "../../utils/zodToGemini";
-import { RefinementOutputSchema } from "../../schemas/refinementSchemas";
+import { 
+    RefinementOutputSchema, 
+    WorldLayerOutputSchema, 
+    NarrativeLayerOutputSchema, 
+    ExpressionPlanningSchema,
+    ExpressionOutputSchema 
+} from "../../schemas/refinementSchemas";
 import { callWithInstructor } from "./refine";
 import { INTENSITY_CONFIG } from "../../constants/polishDepth";
-import { buildSystemPrompt } from "./prompts";
+import { ProfileResolutionEngine } from "./ProfileResolutionEngine";
+import { 
+    buildSystemPrompt, 
+    buildWorldLayerPrompt, 
+    buildNarrativeLayerPrompt, 
+    buildExpressionPlanningPrompt,
+    buildExpressionLayerPrompt 
+} from "./prompts";
 import { DEPTH_CONFIG } from "../../constants/refinement";
 import { DexieSaver } from "./dexieSaver";
 import { SovereignEngine } from "./SovereignEngine";
+import { CPIEngine } from "./CPIEngine";
+import { NITEngine } from "./NITEngine";
+import { AuthorIntentEngine } from "./AuthorIntentEngine";
+import { LCREngine } from "./LCREngine";
 
 // 1. Define the State
 export const RefinementState = Annotation.Root({
@@ -30,6 +48,10 @@ export const RefinementState = Annotation.Root({
     activeTimelineEvents: Annotation<any[]>(),
     activeCharacterArcs: Annotation<any[]>(),
     
+    // Historical Versions (VPI v1.0)
+    historicalLore: Annotation<any[]>(),
+    historicalVoices: Annotation<any[]>(),
+    
     // Configurations configured during pre-flight
     generationConfig: Annotation<GenerationConfig>(),
     reportGenerationConfig: Annotation<GenerationConfig>(),
@@ -40,10 +62,27 @@ export const RefinementState = Annotation.Root({
     blueprint: Annotation<NarrativeBlueprint>(),
     mandate: Annotation<MechanicalMandate>(),
     
+    // Layered Architecture Outputs
+    worldLayerOutput: Annotation<any>(),
+    narrativeLayerOutput: Annotation<any>(),
+    planningLayerOutput: Annotation<any>(),
+    expressionLayerOutput: Annotation<any>(),
+    activeProfiles: Annotation<Record<string, any>>(),
+    interactionField: Annotation<Record<string, any>>(),
+    distortedProfiles: Annotation<Record<string, any>>(),
+    narrativeInstability: Annotation<any>(),
+    instabilityModulators: Annotation<any>(),
+    authorialIntent: Annotation<any>(),
+    lcrArbitration: Annotation<any>(),
+    coherencePressure: Annotation<number>(),
+
     refinedText: Annotation<string>(),
     parsedRefinement: Annotation<any>(),
     combinedThinking: Annotation<string>({
-        reducer: (a, b) => (a ? `${a}\n\n---\n\n${b}` : b)
+        reducer: (a, b) => {
+            if (!b || (typeof b === 'string' && b.trim() === '')) return a;
+            return a ? `${a}\n\n---\n\n${b}` : b;
+        }
     }),
     
     chapterNumber: Annotation<number>(),
@@ -51,6 +90,7 @@ export const RefinementState = Annotation.Root({
 
     parsedAudit: Annotation<any>(),
     entropyMetrics: Annotation<any>(),
+    debugTrace: Annotation<any>(),
     fidelityScore: Annotation<{
         burstiness: number;
         noun_ratio: number;
@@ -67,17 +107,6 @@ export const RefinementState = Annotation.Root({
 });
 
 import { MirrorEditor } from "./MirrorEditor";
-
-// Helper for Safe JSON Parsing
-const safeJsonParse = (jsonString: string) => {
-    try {
-        return JSON.parse(jsonString);
-    } catch (e) {
-        console.error("JSON Parse Error:", e);
-        const fixedJson = jsonString.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
-        try { return JSON.parse(fixedJson); } catch (e2) { throw e; }
-    }
-};
 
 // --- NODE FUNCTIONS ---
 
@@ -242,10 +271,14 @@ async function initializeContextNode(state: typeof RefinementState.State) {
     return {
         preFlight, blueprint, mandate, 
         activeLore, activeVoices, activeAuthorVoices, currentAbsoluteDay,
+        historicalLore: applyTemporalGating(prunedContext.lore),
+        historicalVoices: applyTemporalGating(prunedContext.voices),
         memoryAxioms, activeTimelineEvents, activeCharacterArcs,
         generationConfig, reportGenerationConfig, systemInstruction,
         dynamicLoreThreshold, healingPasses: 0,
-        chapterNumber, decayScalar
+        chapterNumber, decayScalar,
+        coherencePressure: 0.6, // Initial default for expression layer
+        combinedThinking: `[INITIALIZE]: Context assembled. ${activeLore.length} Lore and ${activeVoices.length} Voices synchronized.`
     };
 }
 
@@ -269,48 +302,210 @@ async function sanitizerNode(state: typeof RefinementState.State) {
     };
 
     return { 
-        blueprint: sanitizedBlueprint 
+        blueprint: sanitizedBlueprint,
+        combinedThinking: `[SANITIZER]: System prompts hardened for high-parameter model precision.`
     };
 }
 
-async function refinementNode(state: typeof RefinementState.State) {
-    const { draft, options, systemInstruction, generationConfig } = state;
-    const isPro = SovereignEngine.isProModel(generationConfig.model);
+async function foundationLayerNode(state: typeof RefinementState.State) {
+    const { draft, options, generationConfig } = state;
+    
+    // Combine World and Narrative validation into one prompt for speed
+    const worldPrompt = buildWorldLayerPrompt(options);
+    const narrativePrompt = buildNarrativeLayerPrompt(options);
+    
+    const combinedSystemInstruction = `
+${worldPrompt}
 
-    let preamble = '';
-    if (options.localWarnings && options.localWarnings.length > 0) {
-        preamble += `\n*** PRE-AUDIT WARNINGS ACTIVE ***\nThe local scanner has identified potential continuity issues... You MUST address them.\n`;
-    }
+---
 
-    let userPrompt = '';
-    const masterIntent = (options.customFocus || options.customInstruction) ? `[MASTER INTENT]: ${options.customFocus || options.customInstruction}\n\n` : '';
+${narrativePrompt}
 
-    if (options.fullContextDraft && options.selection) {
-        preamble += `\n*** SURGICAL REFINEMENT MODE ***\nONLY refine the text provided in <TARGET_SELECTION>.\n`;
-        userPrompt = `${preamble}<CONTEXT>\n${options.fullContextDraft}\n</CONTEXT>\n<TARGET_SELECTION>\n${options.selection.text}\n</TARGET_SELECTION>\n<TASK>\n${masterIntent}Refine the <TARGET_SELECTION> based on instructions.\n</TASK>`;
-    } else {
-        preamble += `\n*** FULL CHAPTER REFINEMENT MODE ***\nPRESERVE all titles, headers, etc.\n`;
-        userPrompt = `${preamble}<DRAFT>\n${draft}\n</DRAFT>\n<TASK>\n${masterIntent}Refine.\n</TASK>`;
-    }
+---
+[MISSION]: Perform BOTH World Validation and Narrative Planning.
+1. Return 'worldLayerOutput' (annotated_draft, facts).
+2. Return 'narrativeLayerOutput' (beats, focus_weights, structure).
+`;
 
-    if (isPro) {
-        userPrompt += `\n\nREMINDER: Follow the THE SOVEREIGN RIGOR hard constraints. Focus on Physics, not Vibe.`;
-    }
+    const userPrompt = `### INPUT DRAFT\n${draft}\n\nValidate facts and map scene structure simultaneously.`;
 
-    const { parsed: parsedRefinement, combinedThinking } = await callWithInstructor({
+    const CombinedSchema = z.object({
+        worldLayerOutput: WorldLayerOutputSchema,
+        narrativeLayerOutput: NarrativeLayerOutputSchema
+    });
+
+    const { parsed } = await callWithInstructor({
         model: options.refinementModelOverride || generationConfig.model,
         prompt: userPrompt,
-        systemInstruction,
-        temperature: generationConfig.temperature,
+        systemInstruction: combinedSystemInstruction,
+        temperature: 0.4, 
+        thinkingConfig: generationConfig.thinkingConfig,
+        feedbackDepth: options.feedbackDepth || 'balanced',
+    }, CombinedSchema);
+
+    return { 
+        worldLayerOutput: parsed.worldLayerOutput,
+        narrativeLayerOutput: parsed.narrativeLayerOutput,
+        combinedThinking: `[FOUNDATION_LAYER]: World and Narrative alignment complete.` 
+    };
+}
+
+async function profileResolutionNode(state: typeof RefinementState.State) {
+    const { activeVoices, activeLore, narrativeLayerOutput, options } = state;
+    
+    // VPI v1.0 Resolution
+    const activeProfiles = ProfileResolutionEngine.resolveActiveProfiles(state);
+
+    return {
+        activeProfiles,
+        combinedThinking: `[PROFILE_RESOLUTION]: Active identity projections reconstructed.`
+    };
+}
+
+async function cpiLayerNode(state: typeof RefinementState.State) {
+    const { activeProfiles, draft, narrativeInstability } = state;
+    
+    // CPI v1.0 - Interaction Physics
+    const interactionData = CPIEngine.calculateInteractionField(activeProfiles, draft);
+    const distortedProfiles = CPIEngine.applyDistortions(activeProfiles, interactionData, narrativeInstability);
+
+    return {
+        interactionField: interactionData.interactionField,
+        distortedProfiles,
+        combinedThinking: `[CPI_LAYER]: Cross-profile interaction vectors resolved and applied to resolution biases.`
+    };
+}
+
+async function authorIntentNode(state: typeof RefinementState.State) {
+    // AIS v1.0 - Authorial Intent
+    const intent = AuthorIntentEngine.resolveIntent(state);
+
+    return {
+        authorialIntent: intent,
+        combinedThinking: `[AUTHOR_INTENT_LAYER]: Hierarchy established. Primary Lens: ${intent.primary_lens} (Mode: ${intent.intent_mode}).`
+    };
+}
+
+async function lcrLayerNode(state: typeof RefinementState.State) {
+    // LCR v1.0 - Layer Conflict Resolution
+    const arbitration = LCREngine.arbitrate(state);
+
+    return {
+        lcrArbitration: arbitration,
+        combinedThinking: `[LCR_LAYER]: Conflict arbitration complete. Tension: ${arbitration.tension.toFixed(2)}. Priority set to ${arbitration.priority_stack[0]}.`
+    };
+}
+
+async function nitLayerNode(state: typeof RefinementState.State) {
+    const { options } = state;
+
+    // NIT v1.0 - Narrative Instability
+    const instability = NITEngine.calculateInstability(state);
+    const modulators = NITEngine.getModulators(instability);
+
+    return {
+        narrativeInstability: instability,
+        instabilityModulators: modulators,
+        combinedThinking: `[NIT_LAYER]: Narrative instability field calculated (Scale: ${instability.global_instability}). Expression modulators prepared.`
+    };
+}
+
+async function expressLayerNode(state: typeof RefinementState.State) {
+    const { 
+        worldLayerOutput, 
+        narrativeLayerOutput, 
+        distortedProfiles,
+        interactionField,
+        narrativeInstability,
+        instabilityModulators,
+        authorialIntent,
+        lcrArbitration,
+        options, 
+        generationConfig 
+    } = state;
+    
+    // Combine Planning and Render for speed
+    const planningPrompt = buildExpressionPlanningPrompt({
+        ...options,
+        activeProfiles: distortedProfiles,
+        interactionField,
+        narrativeInstability,
+        instabilityModulators,
+        authorialIntent,
+        lcrArbitration
+    });
+
+    const renderPrompt = buildExpressionLayerPrompt({
+        ...options,
+        activeProfiles: distortedProfiles,
+        interactionField,
+        narrativeInstability,
+        instabilityModulators,
+        authorialIntent,
+        lcrArbitration
+    });
+
+    const combinedSystemInstruction = `
+${planningPrompt}
+
+---
+
+${renderPrompt}
+
+---
+[MISSION]: Perform BOTH Expression Planning and Rendering.
+1. Return 'planningLayerOutput' (imperfection_budget, constraints).
+2. Return 'expressionLayerOutput' (final_text, diagnostic_trace).
+`;
+
+    const draftText = worldLayerOutput?.annotated_draft || state.draft;
+    const sceneStructure = JSON.stringify(narrativeLayerOutput, null, 2);
+    const userPrompt = `### SCENE STRUCTURE\n${sceneStructure}\n\n### VALIDATED DRAFT\n${draftText}\n\nAllocate the budget and render the final prose in one pass.`;
+
+    const CombinedSchema = z.object({
+        planningLayerOutput: ExpressionPlanningSchema,
+        expressionLayerOutput: ExpressionOutputSchema
+    });
+
+    const { parsed, combinedThinking } = await callWithInstructor({
+        model: options.refinementModelOverride || generationConfig.model,
+        prompt: userPrompt,
+        systemInstruction: combinedSystemInstruction,
+        temperature: Math.max(0.7, generationConfig.temperature || 0.7), 
         thinkingConfig: generationConfig.thinkingConfig,
         feedbackDepth: options.feedbackDepth || 'balanced',
         onStream: options.onStream
-    }, RefinementOutputSchema);
+    }, CombinedSchema);
 
     return { 
-        refinedText: parsedRefinement.refined_text, 
-        parsedRefinement, 
+        planningLayerOutput: parsed.planningLayerOutput,
+        expressionLayerOutput: parsed.expressionLayerOutput,
+        coherencePressure: parsed.planningLayerOutput.expression_constraints?.coherence_pressure || 0.6,
+        refinedText: parsed.expressionLayerOutput.final_text,
+        debugTrace: parsed.expressionLayerOutput.debug_trace,
+        parsedRefinement: {
+            ...parsed.expressionLayerOutput,
+            refined_text: parsed.expressionLayerOutput.final_text
+        },
         combinedThinking 
+    };
+}
+
+async function tvdiLayerNode(state: typeof RefinementState.State) {
+    const { debugTrace } = state;
+    
+    // TVDI v1.0 - Diagnostic Mapping
+    if (debugTrace) {
+        if (debugTrace.tension_hotspots?.length > 0) {
+            console.log(`[TVDI_DIAGNOSTIC]: Tension hotspots at sentences: ${debugTrace.tension_hotspots.join(', ')}`);
+        }
+        if (debugTrace.overcorrection_events?.length > 0) {
+            console.warn(`[TVDI_ALERT]: ${debugTrace.overcorrection_events.length} overcorrection events detected.`);
+        }
+    }
+
+    return {
+        combinedThinking: `[TVDI_LAYER]: Instrumentation trace processed. Scene tension field visualized.`
     };
 }
 
@@ -337,6 +532,10 @@ async function auditNode(state: typeof RefinementState.State) {
 
     // 2. LOGICAL AUDIT (AI PRO MIRROR EDITOR)
     // We always run the Mirror Editor to get the high-fidelity Refinement Report and Hallucination checks.
+    // OPTIMIZATION: Use a faster model for intermediary audits if not on the first pass and not explicitly requested otherwise.
+    const isIntermediary = state.healingPasses > 0;
+    const auditModel = isIntermediary ? 'gemini-3.1-flash-lite-preview' : reportGenerationConfig.model;
+
     const { parsedAudit, combinedThinking } = await MirrorEditor.generateReport(
         cleanedText,
         options,
@@ -345,7 +544,7 @@ async function auditNode(state: typeof RefinementState.State) {
         memoryAxioms,
         blueprint,
         mandate,
-        reportGenerationConfig,
+        { ...reportGenerationConfig, model: auditModel },
         dynamicLoreThreshold
     );
 
@@ -403,10 +602,15 @@ async function inversionNode(state: typeof RefinementState.State) {
             return p;
         }).join('\n\n');
         
-        return { refinedText: shuffled };
+        return { 
+            refinedText: shuffled,
+            combinedThinking: `[INVERSION]: Rhythmic metronome detected and broken via sentence shuffling.`
+        };
     }
     
-    return {};
+    return {
+        combinedThinking: `[INVERSION]: Prose rhythm validated for natural variance.`
+    };
 }
 
 /**
@@ -418,7 +622,8 @@ async function translationNode(state: typeof RefinementState.State) {
     const translatedMandate = SovereignEngine.translateAudit(parsedAudit, generationConfig.model);
     
     return {
-        mechanicalMandates: translatedMandate
+        mechanicalMandates: translatedMandate,
+        combinedThinking: `[TRANSLATOR]: High-level audit transcoded into mechanical mandates for surgical repair.`
     };
 }
 
@@ -489,7 +694,11 @@ async function healingNode(state: typeof RefinementState.State) {
 
     return {
         refinedText: finalRefinedText,
-        parsedRefinement: parsedHealing,
+        parsedRefinement: {
+            ...state.parsedRefinement,
+            ...parsedHealing,
+            title: parsedHealing.title || state.parsedRefinement?.title || ""
+        },
         healingPasses: 1, // Will be added by reducer
         combinedThinking
     };
@@ -507,7 +716,14 @@ function shouldHeal(state: typeof RefinementState.State) {
 const workflow = new StateGraph(RefinementState)
     .addNode("initialize", initializeContextNode)
     .addNode("sanitize", sanitizerNode)
-    .addNode("refine", refinementNode)
+    .addNode("foundation_layer", foundationLayerNode)
+    .addNode("profile_resolution", profileResolutionNode)
+    .addNode("cpi_layer", cpiLayerNode)
+    .addNode("author_intent_layer", authorIntentNode)
+    .addNode("nit_layer", nitLayerNode)
+    .addNode("lcr_layer", lcrLayerNode)
+    .addNode("express_layer", expressLayerNode)
+    .addNode("tvdi_layer", tvdiLayerNode)
     .addNode("inversion", inversionNode)
     .addNode("audit", auditNode)
     .addNode("translation", translationNode)
@@ -515,8 +731,15 @@ const workflow = new StateGraph(RefinementState)
     
     .addEdge(START, "initialize")
     .addEdge("initialize", "sanitize")
-    .addEdge("sanitize", "refine")
-    .addEdge("refine", "inversion")
+    .addEdge("sanitize", "foundation_layer")
+    .addEdge("foundation_layer", "profile_resolution")
+    .addEdge("profile_resolution", "cpi_layer")
+    .addEdge("cpi_layer", "author_intent_layer")
+    .addEdge("author_intent_layer", "nit_layer")
+    .addEdge("nit_layer", "lcr_layer")
+    .addEdge("lcr_layer", "express_layer")
+    .addEdge("express_layer", "tvdi_layer")
+    .addEdge("tvdi_layer", "inversion")
     .addEdge("inversion", "audit")
     .addConditionalEdges("audit", shouldHeal, {
         translate_and_heal: "translation",

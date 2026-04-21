@@ -185,43 +185,48 @@ export const useRefinement = (props: RefinementPresetsProps) => {
                  finalRefinedText = replaceClosestOccurrence(fullDraft, selection.text, result.text, selection.start);
             }
 
-            let finalTitle = '';
+            let finalTitle = result.title || '';
+            
             if (isTargeted) {
-                if (activePresetIds.includes('full-chapter-coherence')) {
-                    finalTitle = chapterTitle || sceneTitle || projectName || 'Full Chapter Audit';
-                } else {
-                    finalTitle = sceneTitle || projectName || 'Surgical Audit';
+                if (!finalTitle) {
+                    if (activePresetIds.includes('full-chapter-coherence')) {
+                        finalTitle = chapterTitle || sceneTitle || projectName || 'Full Chapter Audit';
+                    } else {
+                        finalTitle = sceneTitle || projectName || 'Surgical Audit';
+                    }
                 }
             } else {
-                const lines = result.text.trimStart().split('\n');
-                for (const line of lines) {
-                    const trimmedLine = line.trim();
-                    if (!trimmedLine || trimmedLine.startsWith('---') || trimmedLine.startsWith('***')) continue;
-                    if (trimmedLine.startsWith('#')) {
-                        extractedTitle = trimmedLine.replace(/^#+\s*/, '').trim();
-                        break;
-                    } else if (trimmedLine.length > 0 && trimmedLine.length < 60 && !trimmedLine.includes('.') && !trimmedLine.includes(',')) {
-                        extractedTitle = trimmedLine;
-                        break;
-                    }
-                }
-                
-                if (!extractedTitle || extractedTitle.toLowerCase() === 'title') {
-                    const firstDraftLine = fullDraft.trimStart().split('\n', 1)[0].trim();
-                    if (firstDraftLine) {
-                        if (firstDraftLine.startsWith('#')) {
-                            extractedTitle = firstDraftLine.replace(/^#+\s*/, '').trim();
-                        } else if (firstDraftLine.length < 60 && !firstDraftLine.includes('.') && !firstDraftLine.includes(',')) {
-                            extractedTitle = firstDraftLine;
+                if (!finalTitle) {
+                    const lines = result.text.trimStart().split('\n');
+                    for (const line of lines) {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine || trimmedLine.startsWith('---') || trimmedLine.startsWith('***')) continue;
+                        if (trimmedLine.startsWith('#')) {
+                            extractedTitle = trimmedLine.replace(/^#+\s*/, '').trim();
+                            break;
+                        } else if (trimmedLine.length > 0 && trimmedLine.length < 60 && !trimmedLine.includes('.') && !trimmedLine.includes(',')) {
+                            extractedTitle = trimmedLine;
+                            break;
                         }
                     }
-                }
-                
-                if (!extractedTitle || extractedTitle.toLowerCase() === 'title') {
-                    extractedTitle = sceneTitle || projectName || '';
-                }
+                    
+                    if (!extractedTitle || extractedTitle.toLowerCase() === 'title') {
+                        const firstDraftLine = fullDraft.trimStart().split('\n', 1)[0].trim();
+                        if (firstDraftLine) {
+                            if (firstDraftLine.startsWith('#')) {
+                                extractedTitle = firstDraftLine.replace(/^#+\s*/, '').trim();
+                            } else if (firstDraftLine.length < 60 && !firstDraftLine.includes('.') && !firstDraftLine.includes(',')) {
+                                extractedTitle = firstDraftLine;
+                            }
+                        }
+                    }
+                    
+                    if (!extractedTitle || extractedTitle.toLowerCase() === 'title') {
+                        extractedTitle = sceneTitle || projectName || '';
+                    }
 
-                finalTitle = extractedTitle || `Audit ${new Date().toLocaleTimeString()}`;
+                    finalTitle = extractedTitle || `Audit ${new Date().toLocaleTimeString()}`;
+                }
             }
 
             if (finalTitle.length > 100) {

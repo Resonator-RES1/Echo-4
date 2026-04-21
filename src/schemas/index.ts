@@ -47,6 +47,15 @@ export const authorialGoldStandardSchema = z.object({
   createdAt: z.string(),
 });
 
+export const tensionVectorSchema = z.object({
+  id: z.string(),
+  axis: z.enum(['integrity', 'survival', 'cognition', 'performance', 'social']),
+  performance: z.string().min(1, "Performance is required"),
+  essence: z.string().min(1, "Essence is required"),
+  driftModifier: z.number().min(0).max(1),
+  isUnresolved: z.boolean().optional(),
+});
+
 export const voiceProfileSchema = z.object({
   id: z.string().optional(),
   collectionId: z.string().optional(),
@@ -74,6 +83,11 @@ export const voiceProfileSchema = z.object({
   exampleLines: z.array(z.object({ value: z.string() })).optional(),
   aliases: z.string().optional(), // Comma separated
   relationships: z.array(relationshipSchema).optional(),
+  tensionVectors: z.array(tensionVectorSchema).optional(), // NEW (EDE v2.0)
+  interactionPolarity: z.number().min(0).max(1).optional(), // NEW
+  crackStrategy: z.string().optional(), // NEW
+  negativeSpace: z.string().optional(), // NEW
+  unresolvedCoexistence: z.string().optional(), // NEW
   isEvolution: z.boolean().optional(),
   parentId: z.string().optional(),
   goldStandardSnippets: z.array(authorialGoldStandardSchema).optional(),

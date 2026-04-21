@@ -6,10 +6,10 @@ interface ConfigState {
   // Engine Configuration
   model: string;
   refinementModelOverride: string | null;
-  refinementThinkingLevel: 'minimal' | 'low' | 'default' | 'high';
+  refinementThinkingLevel: 'minimal' | 'low' | 'medium' | 'default' | 'high';
   reportModel: string;
   healingModelOverride: string | null;
-  reportThinkingLevel: 'minimal' | 'low' | 'default' | 'high';
+  reportThinkingLevel: 'minimal' | 'low' | 'medium' | 'default' | 'high';
   feedbackDepth: FeedbackDepth;
   refinementScope: 'scene' | 'chapter';
   isSurgicalMode: boolean;
@@ -23,10 +23,10 @@ interface ConfigState {
   // Setters
   setModel: (model: string) => void;
   setRefinementModelOverride: (model: string | null) => void;
-  setRefinementThinkingLevel: (level: 'minimal' | 'low' | 'default' | 'high') => void;
+  setRefinementThinkingLevel: (level: 'minimal' | 'low' | 'medium' | 'default' | 'high') => void;
   setReportModel: (model: string) => void;
   setHealingModelOverride: (model: string | null) => void;
-  setReportThinkingLevel: (level: 'minimal' | 'low' | 'default' | 'high') => void;
+  setReportThinkingLevel: (level: 'minimal' | 'low' | 'medium' | 'default' | 'high') => void;
   setFeedbackDepth: (depth: FeedbackDepth) => void;
   setRefinementScope: (scope: 'scene' | 'chapter') => void;
   setIsSurgicalMode: (isSurgical: boolean) => void;

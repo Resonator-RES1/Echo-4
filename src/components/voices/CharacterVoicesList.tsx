@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Trash2, Plus, Sparkles, UserRound, UserCircle, Square, Circle, Hexagon, Users } from 'lucide-react';
+import { User, Trash2, Plus, Sparkles, UserRound, UserCircle, Square, Circle, Hexagon, Users, Zap } from 'lucide-react';
 import { VoiceProfile } from '../../types';
 import { GenderIcon } from '../GenderIcon';
 
@@ -61,16 +61,24 @@ export function CharacterVoicesList({
                    profile.gender === 'female' ? <Circle className="w-5 h-5" /> : 
                    <Hexagon className="w-5 h-5" />}
                 </div>
-                <div className="flex items-center gap-2">
-                  {profile.isActive && (
-                    <span className="font-label text-[9px] uppercase tracking-widest text-primary bg-primary/10 py-1 px-2 rounded-full flex items-center gap-1">
-                      <Sparkles className="w-2 h-2" />
-                      Active
-                    </span>
-                  )}
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    {profile.tensionVectors && profile.tensionVectors.length > 0 && (
+                      <span className="font-label text-[9px] uppercase tracking-widest text-secondary bg-secondary/10 py-1 px-2 rounded-full flex items-center gap-1" title="Kinetic Tension Core Active">
+                        <Zap className="w-2.5 h-2.5" />
+                        Kinetic
+                      </span>
+                    )}
+                    {profile.isActive && (
+                      <span className="font-label text-[9px] uppercase tracking-widest text-primary bg-primary/10 py-1 px-2 rounded-full flex items-center gap-1">
+                        <Sparkles className="w-2 h-2" />
+                        Active
+                      </span>
+                    )}
+                  </div>
                   <button 
                     onClick={(e) => { e.stopPropagation(); onDelete(profile.id); }}
-                    className="text-on-surface-variant/30 hover:text-error transition-colors"
+                    className="text-on-surface-variant/30 hover:text-error transition-colors mr-1"
                     title="Delete Profile"
                   >
                     <Trash2 className="w-4 h-4" />

@@ -5,6 +5,7 @@ import {
 import { DeterministicStylisticEngine } from "./DeterministicStylisticEngine";
 import { SovereignEngine } from "./SovereignEngine";
 import { LexicalEngine } from "../logic/LexicalEngine";
+import { DialogueEngine } from "./DialogueEngine";
 
 /**
  * AuditEngine: Conducts deterministic diagnostics on refined prose.
@@ -30,6 +31,18 @@ export const AuditEngine = {
         };
     }> {
         const dseResult = DeterministicStylisticEngine.analyze(refinedText, activeLore, activeVoices);
+        const dialogueViolations = DialogueEngine.analyze(refinedText);
+        
+        // Merge violations
+        const mergedViolations = [
+            ...dseResult.violations,
+            ...dialogueViolations.map(dv => ({
+                type: 'Sludge' as const, // Map dialogue violations to Sludge for now
+                message: `Dialogue Engine: ${dv.message}`,
+                severity: dv.severity as any
+            }))
+        ];
+
         const isPro = SovereignEngine.isProModel(options.generationConfig?.model);
         
         // --- WEAPONIZED LEXICAL PASS ---
@@ -64,13 +77,13 @@ export const AuditEngine = {
         const isEntropyFailed = dseResult.ttr < 0.6 || dseResult.sigma < burstinessThreshold || dseResult.polarityScore < 0.8 || dseResult.nounAdjectiveRatio < 4.0;
         
         // Needs healing if any stylistic OR semantic failure
-        const hasSemanticFail = dseResult.hallucinations.length > 0 || dseResult.voiceViolations.length > 0;
+        const hasSemanticFail = dseResult.hallucinations.length > 0 || dseResult.voiceViolations.length > 0 || dialogueViolations.some(v => v.severity === 'critical' || v.severity === 'high');
         const needsHealing = dseResult.sludgeDetected || isEntropyFailed || hasSemanticFail;
 
         return { 
             needsHealing,
             entropyMetrics,
-            violations: dseResult.violations,
+            violations: mergedViolations,
             cleanedText: weaponizedText,
             fidelityScore: dseResult.fidelityScore
         };

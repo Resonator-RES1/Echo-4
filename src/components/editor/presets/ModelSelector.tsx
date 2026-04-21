@@ -4,7 +4,7 @@ import { Cpu, Zap, Brain, Key } from 'lucide-react';
 interface ModelSelectorProps {
   selectedModel: string;
   setSelectedModel: (model: any) => void;
-  selectedThinkingLevel?: 'minimal' | 'low' | 'default' | 'high';
+  selectedThinkingLevel?: 'minimal' | 'low' | 'medium' | 'default' | 'high';
   setSelectedThinkingLevel?: (level: any) => void;
 }
 
@@ -88,9 +88,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, set
     }
   };
 
-  const thinkingLevels: { id: 'minimal' | 'low' | 'default' | 'high'; label: string }[] = [
+  const thinkingLevels: { id: 'minimal' | 'low' | 'medium' | 'default' | 'high'; label: string }[] = [
     { id: 'minimal', label: 'Minimal' },
     { id: 'low', label: 'Low' },
+    { id: 'medium', label: 'Medium' },
     { id: 'default', label: 'Default' },
     { id: 'high', label: 'High' },
   ];

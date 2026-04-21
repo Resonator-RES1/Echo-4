@@ -196,7 +196,7 @@ export interface GenerationConfig {
     model: 'gemini-3.1-flash-lite-preview' | 'gemini-3.1-pro-preview' | 'gemini-3-flash-preview' | 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-2.5-pro';
     temperature?: number;
     thinkingConfig?: {
-        thinkingLevel: 'minimal' | 'low' | 'default' | 'high';
+        thinkingLevel: 'minimal' | 'low' | 'medium' | 'default' | 'high';
     };
 }
 
@@ -206,15 +206,59 @@ export interface AiPayload {
     systemInstruction?: string;
     temperature?: number;
     thinkingConfig?: {
-        thinkingLevel: 'minimal' | 'low' | 'default' | 'high';
+        thinkingLevel: 'minimal' | 'low' | 'medium' | 'default' | 'high';
     };
     responseSchema?: any;
     feedbackDepth?: FeedbackDepth;
     onStream?: (chunk: { text?: string; thinking?: string }) => void;
 }
 
+export interface NarrativeInstability {
+  global_instability: number;
+  instability_type: 'none' | 'textured' | 'unstable' | 'chaotic' | 'breakdown';
+  instability_targets: string[];
+  stability_floor: number;
+}
+
+export interface AuthorialIntent {
+  primary_lens: string;
+  active_lenses: string[];
+  lens_weights: Record<string, number>;
+  intent_mode: string;
+}
+
+export interface LCRArbitration {
+  tension: number;
+  priority_stack: string[];
+  conflict_resolutions: Record<string, 'resolve' | 'blend' | 'preserve'>;
+  coherence_threshold: number;
+}
+
+export interface SentenceTrace {
+  sentence_id: number;
+  text: string;
+  influences: Record<string, number>;
+  dominant_force: string;
+  suppressed_forces: string[];
+  coherence_pressure: number;
+  tension: number;
+}
+
+export interface DebugTrace {
+  sentence_map: SentenceTrace[];
+  layer_influence_matrix: Record<string, number>;
+  tension_hotspots: number[];
+  overcorrection_events: any[];
+  preserved_conflicts: any[];
+}
+
 export interface RefineDraftOptions {
   draft: string;
+  narrativeInstability?: NarrativeInstability;
+  authorialIntent?: AuthorialIntent;
+  lcrArbitration?: LCRArbitration;
+  debugTrace?: DebugTrace;
+  // ... other fields
   fullContextDraft?: string;
   selection?: { start: number; end: number; text: string };
   generationConfig: GenerationConfig;
@@ -522,6 +566,15 @@ export interface AuthorialGoldStandard {
   createdAt: string;
 }
 
+export interface TensionVector {
+  id: string;
+  axis: 'integrity' | 'survival' | 'cognition' | 'performance' | 'social';
+  performance: string; // The "Rule" or surface behavior
+  essence: string;     // The hidden truth or underlying need
+  driftModifier: number; // 0.0 to 1.0 (susceptibility to cracking/inconsistency)
+  isUnresolved?: boolean; // NEW (EDE v2.1) - The "Neutrality" Clause
+}
+
 export interface VoiceProfile {
   id: string;
   collectionId?: string;
@@ -544,6 +597,11 @@ export interface VoiceProfile {
   internalMonologue: string;
   socialDynamics: string;
   relationships: Relationship[];
+  tensionVectors?: TensionVector[]; // NEW (EDE v2.0 - The Kinetic Engine)
+  interactionPolarity?: number;     // 0.0 to 1.0 (Conflict-Seeker vs People-Pleaser)
+  crackStrategy?: string;           // Narrative description of how the character destabilizes
+  negativeSpace?: string;           // NEW: Defining what the character IS NOT
+  unresolvedCoexistence?: string;   // NEW: Descriptions of unresolved forces (The "Ghost" state)
   aliases?: string[];
   dna?: {
     warmth: number;

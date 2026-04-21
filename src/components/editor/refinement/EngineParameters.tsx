@@ -3,19 +3,19 @@ import { Settings2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ModelSelector } from '../presets/ModelSelector';
 import { PolishDepthSelector } from '../presets/PolishDepthSelector';
-import { DraftingStance } from '../../../types';
+import { DraftingStance, FeedbackDepth } from '../../../types';
 
 interface EngineParametersProps {
   model: string;
   setModel: (model: string) => void;
-  refinementThinkingLevel: 'minimal' | 'low' | 'default' | 'high';
-  setRefinementThinkingLevel: (level: 'minimal' | 'low' | 'default' | 'high') => void;
+  refinementThinkingLevel: 'minimal' | 'low' | 'medium' | 'default' | 'high';
+  setRefinementThinkingLevel: (level: 'minimal' | 'low' | 'medium' | 'default' | 'high') => void;
   reportModel: string;
   setReportModel: (model: string) => void;
-  reportThinkingLevel: 'minimal' | 'low' | 'default' | 'high';
-  setReportThinkingLevel: (level: 'minimal' | 'low' | 'default' | 'high') => void;
-  feedbackDepth: 'surface' | 'balanced' | 'in-depth';
-  setFeedbackDepth: (depth: 'surface' | 'balanced' | 'in-depth') => void;
+  reportThinkingLevel: 'minimal' | 'low' | 'medium' | 'default' | 'high';
+  setReportThinkingLevel: (level: 'minimal' | 'low' | 'medium' | 'default' | 'high') => void;
+  feedbackDepth: FeedbackDepth;
+  setFeedbackDepth: (depth: FeedbackDepth) => void;
   creativeTension: number;
   setCreativeTension: (tension: number) => void;
   reportTemperature: number;
@@ -51,6 +51,16 @@ export const EngineParameters: React.FC<EngineParametersProps> = ({
     return 'bg-accent-emerald';
   };
 
+  const handleModelChange = (newModel: string) => {
+    setModel(newModel);
+    
+    // SOVEREIGN MANDATE: Lite models cannot sustain the cognitive pressure of In-depth refinement.
+    const isLite = newModel.includes('lite');
+    if (isLite && feedbackDepth === 'in-depth') {
+      setFeedbackDepth('balanced');
+    }
+  };
+
   return (
     <div className="bg-surface-container-high/30 rounded-xl p-4 border border-white/5 space-y-6">
       <div className="flex items-center gap-2 px-1">
@@ -78,7 +88,7 @@ export const EngineParameters: React.FC<EngineParametersProps> = ({
         <label className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50">Refinement Intelligence Model</label>
         <ModelSelector 
           selectedModel={model}
-          setSelectedModel={setModel}
+          setSelectedModel={handleModelChange}
           selectedThinkingLevel={refinementThinkingLevel}
           setSelectedThinkingLevel={setRefinementThinkingLevel}
         />

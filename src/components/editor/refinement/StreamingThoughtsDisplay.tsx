@@ -58,7 +58,7 @@ export const StreamingThoughtsDisplay: React.FC<StreamingThoughtsDisplayProps> =
           
           <div 
             ref={thoughtsContainerRef}
-            className={`overflow-y-auto custom-scrollbar space-y-4 transition-all duration-700 ease-in-out ${isThinkingExpanded ? 'max-h-[2000px]' : 'max-h-48'}`}
+            className={`overflow-y-auto custom-scrollbar space-y-4 transition-all duration-700 ease-in-out ${isThinkingExpanded ? 'max-h-[80vh]' : 'max-h-48'}`}
           >
             {streamingThoughts && (
               <div className="pr-2">

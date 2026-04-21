@@ -2,29 +2,39 @@ import React, { useMemo } from 'react';
 import { AlertCircle, Zap, Fingerprint, Book } from 'lucide-react';
 import { ContinuityIssue } from '../../types';
 import { motion } from 'motion/react';
+import { ReportThinkingFlow } from '../flowrail/ReportThinkingFlow';
 
 interface MirrorPreviewProps {
   text: string;
   selection?: { text: string; start: number; end: number } | null;
   localWarnings?: ContinuityIssue[];
   isSurgical?: boolean;
+  streamingThoughts?: string;
+  streamingText?: string;
+  isRefining?: boolean;
 }
 
 export const MirrorPreview: React.FC<MirrorPreviewProps> = ({
   text,
   selection,
   localWarnings = [],
-  isSurgical = false
+  isSurgical = false,
+  streamingThoughts,
+  streamingText,
+  isRefining = false
 }) => {
+  const [activeTab, setActiveTab] = React.useState<'preview' | 'thoughts'>('preview');
+
   const displayLines = useMemo(() => {
-    const content = isSurgical && selection ? selection.text : text;
+    const content = isRefining && streamingText ? streamingText : (isSurgical && selection ? selection.text : text);
     return content.split('\n');
-  }, [text, selection, isSurgical]);
+  }, [text, selection, isSurgical, streamingText, isRefining]);
 
   const wordCount = useMemo(() => {
-    const matches = (isSurgical && selection ? selection.text : text).match(/\S+/g);
+    const content = isRefining && streamingText ? streamingText : (isSurgical && selection ? selection.text : text);
+    const matches = content.match(/\S+/g);
     return matches ? matches.length : 0;
-  }, [text, selection, isSurgical]);
+  }, [text, selection, isSurgical, streamingText, isRefining]);
 
   // Locally calculated "First Impression" metrics
   const diagnostics = useMemo(() => {
@@ -47,11 +57,19 @@ export const MirrorPreview: React.FC<MirrorPreviewProps> = ({
           <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
             <Fingerprint className="w-4 h-4 text-primary" />
           </div>
-          <div>
-            <h4 className="text-[9px] font-black uppercase tracking-widest text-on-surface">Mirror Preview</h4>
-            <p className="text-[8px] text-on-surface-variant/60 font-bold uppercase tracking-tighter">
-              {isSurgical ? 'Targeted Selection' : 'Full Manuscript Audit'}
-            </p>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setActiveTab('preview')}
+              className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${activeTab === 'preview' ? 'bg-primary text-on-primary' : 'bg-surface-container-highest text-on-surface-variant/60'}`}
+            >
+              Preview
+            </button>
+            <button 
+              onClick={() => setActiveTab('thoughts')}
+              className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${activeTab === 'thoughts' ? 'bg-primary text-on-primary' : 'bg-surface-container-highest text-on-surface-variant/60'}`}
+            >
+              Thought Stream
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -62,36 +80,44 @@ export const MirrorPreview: React.FC<MirrorPreviewProps> = ({
         </div>
       </div>
 
-      {/* Diagnostic Strip */}
-      <div className="grid grid-cols-3 gap-px bg-white/5 border-b border-white/5">
-        <div className="p-3 bg-surface-container-low flex flex-col items-center gap-1">
-          <span className="text-[7px] font-black uppercase tracking-widest text-on-surface-variant/40">Prose Density</span>
-          <span className={`text-[9px] font-bold ${diagnostics.density === 'High' ? 'text-accent-amber' : 'text-accent-emerald'}`}>
-            {diagnostics.density}
-          </span>
-        </div>
-        <div className="p-3 bg-surface-container-low flex flex-col items-center gap-1 border-x border-white/5">
-          <span className="text-[7px] font-black uppercase tracking-widest text-on-surface-variant/40">Resonance</span>
-          <span className={`text-[9px] font-bold ${diagnostics.resonance === 'Critical' ? 'text-error' : diagnostics.resonance === 'Fraying' ? 'text-accent-amber' : 'text-accent-emerald'}`}>
-            {diagnostics.resonance}
-          </span>
-        </div>
-        <div className="p-3 bg-surface-container-low flex flex-col items-center gap-1">
-          <span className="text-[7px] font-black uppercase tracking-widest text-on-surface-variant/40">Avg Sentence</span>
-          <span className="text-[9px] font-bold text-on-surface">{diagnostics.avgSentenceLength} words</span>
-        </div>
-      </div>
+      {activeTab === 'preview' ? (
+        <>
+          {/* Diagnostic Strip */}
+          <div className="grid grid-cols-3 gap-px bg-white/5 border-b border-white/5">
+            <div className="p-3 bg-surface-container-low flex flex-col items-center gap-1">
+              <span className="text-[7px] font-black uppercase tracking-widest text-on-surface-variant/40">Prose Density</span>
+              <span className={`text-[9px] font-bold ${diagnostics.density === 'High' ? 'text-accent-amber' : 'text-accent-emerald'}`}>
+                {diagnostics.density}
+              </span>
+            </div>
+            <div className="p-3 bg-surface-container-low flex flex-col items-center gap-1 border-x border-white/5">
+              <span className="text-[7px] font-black uppercase tracking-widest text-on-surface-variant/40">Resonance</span>
+              <span className={`text-[9px] font-bold ${diagnostics.resonance === 'Critical' ? 'text-error' : diagnostics.resonance === 'Fraying' ? 'text-accent-amber' : 'text-accent-emerald'}`}>
+                {diagnostics.resonance}
+              </span>
+            </div>
+            <div className="p-3 bg-surface-container-low flex flex-col items-center gap-1">
+              <span className="text-[7px] font-black uppercase tracking-widest text-on-surface-variant/40">Avg Sentence</span>
+              <span className="text-[9px] font-bold text-on-surface">{diagnostics.avgSentenceLength} words</span>
+            </div>
+          </div>
 
-      {/* Preview Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 font-serif text-sm leading-relaxed text-on-surface-variant/80 selection:bg-primary/20">
-        <div className="max-w-prose mx-auto space-y-4">
-          {displayLines.map((line, idx) => (
-            <p key={idx} className="relative group">
-              {line || '\u00A0'}
-            </p>
-          ))}
+          {/* Preview Content */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-5 font-serif text-sm leading-relaxed text-on-surface-variant/80 selection:bg-primary/20">
+            <div className="max-w-prose mx-auto space-y-4">
+              {displayLines.map((line, idx) => (
+                <p key={idx} className="relative group">
+                  {line || '\u00A0'}
+                </p>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-5">
+           <ReportThinkingFlow thinking={streamingThoughts || 'No active thoughts...'} />
         </div>
-      </div>
+      )}
 
       {/* Warnings Footer */}
       {localWarnings.length > 0 && (

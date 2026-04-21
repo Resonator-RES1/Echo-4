@@ -1,6 +1,82 @@
 import { z } from 'zod';
 
 /**
+ * Helper for fields that occasionally arrive as strings from LLMs despite object schema.
+ */
+const resilientRecord = <T extends z.ZodTypeAny>(valueSchema: T) => 
+  z.union([
+    z.record(z.string(), valueSchema),
+    z.string().transform((val): Record<string, z.infer<T>> => {
+      try {
+        return JSON.parse(val);
+      } catch (e) {
+        console.warn("Structural repair: Failed to parse stringified record:", val);
+        return {} as Record<string, z.infer<T>>;
+      }
+    })
+  ]);
+
+/**
+ * Profile Evolution Signal (VPI v1.0)
+ */
+export const ProfileEvolutionSchema = z.object({
+  profile_id: z.string(),
+  shifts: z.object({
+    tone: z.string().optional(),
+    emotional_access: z.string().optional(),
+    speech_style: z.string().optional()
+  }).catchall(z.string()).or(z.string().transform(v => {
+    try { return JSON.parse(v); } catch(e) { return {}; }
+  })).describe("Field-level shifts detected"),
+  trigger: z.string().describe("What triggered this shift in the scene"),
+  suggested_new_level: z.number().optional().describe("e.g. power_access shift")
+});
+
+export const SentenceTraceSchema = z.object({
+  sentence_id: z.number(),
+  text: z.string(),
+  influences: z.object({
+    world: z.number().optional(),
+    structure: z.number().optional(),
+    cpi: z.number().optional(),
+    instability: z.number().optional(),
+    author_intent: z.number().optional(),
+    profile_voice: z.number().optional()
+  }).catchall(z.number()).or(z.string().transform(v => {
+    try { return JSON.parse(v); } catch(e) { return {}; }
+  })).describe("Force weights from World, Identity, CPI, Instability, Author Intent, Structure, Expression"),
+  dominant_force: z.string(),
+  suppressed_forces: z.array(z.string()),
+  coherence_pressure: z.number().min(0).max(1),
+  tension: z.number().min(0).max(1).describe("tension = max_force - min_force + variance_between_forces")
+});
+
+export const DebugTraceSchema = z.object({
+  sentence_map: z.array(SentenceTraceSchema),
+  layer_influence_matrix: z.object({
+    world: z.number().optional(),
+    identity: z.number().optional(),
+    structure: z.number().optional(),
+    author_intent: z.number().optional()
+  }).catchall(z.number()).or(z.string().transform(v => {
+    try { return JSON.parse(v); } catch(e) { return {}; }
+  })).describe("Global dominance weights for the scene"),
+  tension_hotspots: z.array(z.number()).describe("IDs of sentences with High tension (> 0.7)"),
+  overcorrection_events: z.array(z.object({
+    sentence_id: z.number(),
+    type: z.string(),
+    cause: z.string(),
+    effect: z.string()
+  })),
+  preserved_conflicts: z.array(z.object({
+    conflict: z.string(),
+    resolution: z.string(),
+    residual_tension: z.number(),
+    manifestation: z.string()
+  }))
+});
+
+/**
  * Narrative Metrics (The "Pulse" of the prose)
  */
 export const ProseMetricSchema = z.object({
@@ -37,6 +113,7 @@ export const RefinementOutputSchema = z.object({
   justification: z.string().describe("Mechanical reasons for the most significant shifts"),
   collision_analysis: z.string().describe("How character relationships interacted in this draft"),
   sync_audit: z.string().describe("Integrity check between internal mental state and physical action"),
+  structural_audit: z.string().optional().describe("Critique of MRU fulfillment and MSF compliance"),
   
   // High-Fidelity Simulator Fields
   why_behind_change: z.string().optional().describe("The socio-narrative or technical 'Why' behind the specific shifts"),
@@ -61,7 +138,11 @@ export const RefinementOutputSchema = z.object({
     diagnostic_rationale: z.string().describe("The reasoning behind why this self-correction was necessary"),
     original_snippet: z.string(),
     corrected_snippet: z.string()
-  }))
+  })),
+  
+  // VPI & TVDI Support (Added to base refinement for pass-through consistency)
+  profile_evolution_signals: z.array(ProfileEvolutionSchema).optional().describe("VPI v1.0 Feedback Loop: Suggested identity shifts"),
+  debug_trace: DebugTraceSchema.optional().describe("TVDI v1.0: Instrumentation data for diagnostic mapping")
 });
 
 export const EntropySegmentSchema = z.object({
@@ -139,6 +220,12 @@ export const AuditOutputSchema = z.object({
     characterName: z.string(),
     resonanceScore: z.number().min(0).max(10),
     dissonanceReason: z.string().optional(),
+    tension_audit: z.array(z.object({
+      axis: z.enum(['integrity', 'survival', 'cognition', 'performance', 'social']),
+      resolutionScore: z.number().min(0).max(10).describe("How well the prose balanced the character's surface performance vs their hidden essence"),
+      is_authentic_inconsistency: z.boolean().describe("Whether this specific line was a 'crack' that was true to the character's deeper truth"),
+      diagnostic: z.string()
+    })).optional(),
     arc_intent: z.object({
       type: z.enum(['alignment', 'divergence', 'intentional_evolution']),
       rationale: z.string().describe("Explanation for why this voice has shifted (or stayed the same) relative to its 'Evolutions' history")
@@ -151,6 +238,99 @@ export const AuditOutputSchema = z.object({
     diagnostic: z.string().describe("Detailed logical breakdown of why this is a collision")
   })).describe("Direct contradictions found against the synthesized Echo Dynamic Memory")
 });
+
+/**
+ * Layer 1: World Layer Output (Truth Lock)
+ */
+export const WorldLayerOutputSchema = z.object({
+  world_facts: z.array(z.string()).describe("List of facts verified as true against active lore"),
+  world_violations: z.array(z.object({
+    original_text: z.string(),
+    error: z.string(),
+    fix: z.string()
+  })).describe("Factual contradictions identified"),
+  corrected_facts: z.array(z.string()).describe("Factual adjustments passed forward"),
+  locked_constraints: z.array(z.string()).describe("Constants that must not be altered by downstream layers"),
+  annotated_draft: z.string().describe("The draft with factual corrections applied, but NO stylistic changes")
+});
+
+/**
+ * Layer 2: Narrative Control Layer Output (Structure Pass)
+ */
+export const NarrativeLayerOutputSchema = z.object({
+  scene_structure: z.object({
+    beats: z.array(z.object({
+      id: z.string(),
+      type: z.enum(['arrival', 'exchange', 'climax', 'revelation', 'sensory', 'action', 'dialogue', 'internal']),
+      importance: z.enum(['low', 'medium', 'high', 'critical']),
+      description: z.string()
+    })),
+    pacing: z.enum(['slow-burn', 'medium', 'fast', 'frenetic']),
+    emotional_curve: z.string().describe("e.g. 'rise → tension spike → concealment'"),
+    structural_density: z.enum(['compact', 'standard', 'expansive']).describe("Guidance for paragraph length and MRU depth")
+  }),
+  focus_weights: z.object({
+    sensory: z.number().min(0).max(1),
+    dialogue: z.number().min(0).max(1),
+    action: z.number().min(0).max(1),
+    exposition: z.number().min(0).max(1)
+  }),
+  reordering_suggestions: z.array(z.string()).describe("Beat IDs in recommended order")
+});
+
+/**
+ * Layer 3: Expression Planning Layer (Intent + Imperfection Allocation)
+ */
+export const ExpressionPlanningSchema = z.object({
+  render_plan: z.array(z.object({
+    beat_id: z.string(),
+    intended_tone: z.string(),
+    linguistic_style: z.string(),
+    allowed_variance: z.enum(['low', 'moderate', 'high'])
+  })),
+  expression_constraints: z.object({
+    coherence_pressure: z.number().min(0).max(1),
+    imperfection_budget: z.object({
+      hesitations: z.number(),
+      redundancies: z.number(),
+      rhythm_breaks: z.number(),
+      emotional_overlap_events: z.number()
+    })
+  }),
+  human_noise_signature: z.object({
+    style_drift: z.number().min(0).max(1),
+    attention_instability: z.number().min(0).max(1),
+    emotional_overlap: z.number().min(0).max(1)
+  }).optional()
+});
+
+
+/**
+ * Layer 4: Expression Renderer Output (Final Generation)
+ */
+export const ExpressionOutputSchema = z.object({
+  internal_critique: z.string().describe("Step-by-step reasoning used by the AI before writing"),
+  final_text: z.string().describe("The final polished prose with controlled imperfections"),
+  title: z.string().optional().describe("Suggested title for the scene/fragment"),
+  used_imperfections: z.object({
+    hesitations: z.number(),
+    redundancies: z.number(),
+    rhythm_breaks: z.number()
+  }).describe("Accounting of imperfections utilized in the rendering"),
+  unresolved_micro_variance: z.array(z.string()).describe("Specific instances of preserved human noise"),
+  structural_compliance: z.object({
+    mru_fulfillment: z.number().min(0).max(100),
+    paragraphing_integrity: z.number().min(0).max(100),
+    MSF_adherence: z.string()
+  }).describe("SFE v1.0 Structure & Format Engine metrics"),
+  profile_evolution_signals: z.array(ProfileEvolutionSchema).optional().describe("VPI v1.0 Feedback Loop: Suggested identity shifts"),
+  debug_trace: DebugTraceSchema.optional().describe("TVDI v1.0: Instrumentation data for diagnostic mapping")
+});
+
+export type WorldLayerOutput = z.infer<typeof WorldLayerOutputSchema>;
+export type NarrativeLayerOutput = z.infer<typeof NarrativeLayerOutputSchema>;
+export type ExpressionPlanning = z.infer<typeof ExpressionPlanningSchema>;
+export type ExpressionOutput = z.infer<typeof ExpressionOutputSchema>;
 
 export type RefinementOutput = z.infer<typeof RefinementOutputSchema>;
 export type AuditOutput = z.infer<typeof AuditOutputSchema>;

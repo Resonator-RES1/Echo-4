@@ -104,7 +104,15 @@ export const DeterministicStylisticEngine = {
         let codaViolationSnippet = '';
         const abstractWords = ['ultimately', 'legacy', 'realization', 'testament', 'growth', 'lesson learned', 'summary', 'finally', 'meaning'];
         
+        let wallOfTextDetected = false;
+        const maxParagraphWordCount = 150;
+
         for (const p of paragraphs) {
+            const pWords = p.split(/\s+/).filter(w => w.length > 0);
+            if (pWords.length > maxParagraphWordCount) {
+                wallOfTextDetected = true;
+            }
+
             const pSentences = p.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0);
             if (pSentences.length === 0) continue;
             const lastSentence = pSentences[pSentences.length - 1].toLowerCase();
@@ -112,8 +120,12 @@ export const DeterministicStylisticEngine = {
             if (abstractWords.some(w => lastSentence.includes(w))) {
                 abstractionLeak = true;
                 codaViolationSnippet = lastSentence;
-                break;
             }
+        }
+
+        // 7. Structure Veto (Wall of Text)
+        if (text.length > 500 && paragraphs.length < 2) {
+            wallOfTextDetected = true;
         }
 
         // 3. Winston Shield: Sentence Polarity
@@ -271,6 +283,14 @@ export const DeterministicStylisticEngine = {
             violations.push({
                 type: 'Sludge',
                 message: `Coda Veto (Moralizer) detected: Abstract wrap-up sentence at end of paragraph ("${codaViolationSnippet.substring(0, 40)}..."). Do not summarize meaning.`,
+                severity: 'high'
+            });
+        }
+
+        if (wallOfTextDetected) {
+            violations.push({
+                type: 'Sludge',
+                message: "Wall of Text detected. One or more paragraphs exceed 150 words, or the entire text is a single block. Break the structure.",
                 severity: 'high'
             });
         }
